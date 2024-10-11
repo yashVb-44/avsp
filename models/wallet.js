@@ -10,6 +10,9 @@ const walletSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         refPath: 'User',
     },
+    name: {
+        type: String
+    },
     amount: {
         type: Number,
         default: 0

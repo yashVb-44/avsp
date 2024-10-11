@@ -22,6 +22,7 @@ const productRoutes = require('./routes/productRoutes');
 const productLogRoutes = require('./routes/productLogRoutes');
 const serviceReminderRoutes = require('./routes/serviceReminderRoutes');
 const walletRoutes = require('./routes/walletRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
 
 router.use("/user", userRoutes)
 router.use("/vendor", vendorRoutes)
@@ -42,5 +43,6 @@ router.use("/product", productRoutes)
 router.use("/productHistory", productLogRoutes)
 router.use("/serviceReminder", serviceReminderRoutes)
 router.use("/wallet", walletRoutes)
+router.use("/transaction", transactionRoutes)
 
 module.exports = router;

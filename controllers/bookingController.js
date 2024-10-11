@@ -468,7 +468,7 @@ const updateBooking = async (req, res) => {
         Object.assign(booking, updates);
         if (updates.status === "6") {
             await addRemoveAmountFromWallet({ ownerType: "0", ownerId: booking.user, amount: booking.payableAmount, amountType: "0", vendor: vendor.id })
-            await addTransaction({ ownerType: "0", ownerId: booking.user, booking: booking, amountType: "0", vendor: vendor.id })
+            await addTransaction({ ownerType: "0", ownerId: booking.user, booking: booking, amountType: "0", vendor: vendor.id , transactionType : "0"})
         }
         // Save the updated booking
         await booking.save();
