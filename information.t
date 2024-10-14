@@ -59,5 +59,30 @@
 ** table -> (transection) 
 => amountType  ->  0= debit
                         1= credit
+                        3 = nothing
 
+=> type -> 0 = sales
+            1 = purchase
+            2 = others
+            3= booking
 
+=> subtype ->
+                1 = sales/purchase invoice    
+                2 = sales/purchase return  
+                3 = sales/purchase paymentin  
+                4 = sales/purchase paymentout  
+                5 = counter sale
+                6 = other
+
+** table -> (invoice) 
+=> type  ->  0= booking
+                        1= sale
+                        2= counter sale
+                        3 = sale return 
+                        4 = purchase 
+                        5 = purchase return 
+
+** table -> (sale invoice) 
+=> type  ->             0= sale
+                        1= counter sale
+                        2 = sale return 

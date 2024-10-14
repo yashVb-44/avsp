@@ -1,15 +1,15 @@
-const Wallet = require('../models/wallet'); 
-const User = require('../models/user'); 
+const Wallet = require('../models/wallet');
+const User = require('../models/user');
 
 const geteUserId = async ({ mobileNo }) => {
     // console.log("check", ownerType, amountType, ownerId, amount)
     try {
-        let user 
+        let user
 
-        user = await User.findOne({mobileNo})
+        user = await User.findOne({ mobileNo })
 
         if (user) {
-            return { success: true, message: 'User id ger succssfully', user };
+            return { success: true, message: 'User id get succssfully', user };
         } else {
             throw new Error("user not found for this mobile number.");
         }

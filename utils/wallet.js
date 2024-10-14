@@ -50,4 +50,14 @@ const addRemoveAmountFromWallet = async ({ ownerType, amountType, ownerId, amoun
     }
 };
 
-module.exports = { addRemoveAmountFromWallet }  
+const checkUserWalletExistForVendor = async ({ userID, vendorID }) => {
+    try {
+        const wallet = await Wallet.findOne({ ownerUser: userID, vendor: vendorID });
+        return wallet ? true : false;
+    } catch (error) {
+        throw new Error("Failed to check wallet existence.");
+    }
+};
+
+
+module.exports = { addRemoveAmountFromWallet, checkUserWalletExistForVendor }  

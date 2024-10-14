@@ -48,7 +48,7 @@ const addTransaction = async ({
         amount: amount,
         amountType: "1",
         transactionType,
-        billingType: "2", 
+        billingType: "2",
         isWithAddOnAmount,
         booking
       });
@@ -67,6 +67,33 @@ const addTransaction = async ({
   } catch (error) {
     console.error(error);
     return { success: false, message: "Error adding transaction", error };
+  }
+};
+
+const SaleTransaction = async ({ customer, owner, amount, amountType, billingType, transactionType, subType, invoice, invoiceId, ownerModel, customerModel }) => {
+  try {
+    let newTransaction = await new Transaction({
+      customer,
+      owner,
+      amount,
+      amountType,
+      billingType,
+      transactionType,
+      subType,
+      invoice,
+      customerModel,
+      ownerModel
+    });
+    if (subType === "1") {
+      newTransaction.invoiceId = invoiceId
+    } else if (subType === "2") {
+      newTransaction.invoiceId = invoiceId
+    }
+    await newTransaction.save()
+    return newTransaction
+
+  } catch (error) {
+    throw new Error(`Transaction handling failed: ${error.message}`);
   }
 };
 
@@ -117,4 +144,5 @@ module.exports = {
   addTransaction,
   addTransactionAtAddNewUser,
   updateTransaction,
+  SaleTransaction
 };

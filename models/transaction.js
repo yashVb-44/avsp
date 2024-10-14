@@ -2,21 +2,21 @@
 const mongoose = require('mongoose');
 
 const transactionSchema = mongoose.Schema({
-    user: {
+    customer: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'toModel',
     },
-    vendor: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Vendor',
+    customerModel: {
+        type: String,
+        enum: ['User', 'Vendor'],
     },
-    ownerVendor: {
-        type: mongoose.Schema.Types.ObjectId,
-        refPath: 'Vendor',
+    ownerModel: {
+        type: String,
+        enum: ['User', 'Vendor'],
     },
-    ownerUser: {
+    owner: {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'User',
+        refPath: 'toModel',
     },
     booking: [{
         bookingId: {
@@ -31,15 +31,24 @@ const transactionSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking',
     },
-    invocieID: {
-        type: String
+    invoice: [{
+        type: mongoose.Schema.Types.ObjectId,
+        refPath: 'Invoice',
+    }],
+    invoiceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Invoice',
     },
     totalAmount: {
         type: Number,
     },
     amountType: {
         type: String,
-        default: "0" // 0 = invoice(booking) , 1= recived, 2= debited
+        default: "0" // 0 = invoice(booking) , 1= recived, 2= debited,3= nothing, 4 = booking
+    },
+    paymentType: {
+        type: String,
+        default: "0" // 0 = cash , 1 = online
     },
     amount: {
         type: Number
@@ -53,22 +62,14 @@ const transactionSchema = mongoose.Schema({
     },
     transactionType: {
         type: String,
-        // enum: [
-        //     'user_booking_online' = "0",
-        //     'sale_invoice',
-        //     'sale_counter',
-        //     'sale_return',
-        //     'sale_payment_in',
-        //     'purchase_invoice',
-        //     'purchase_return',
-        //     'purchase_out',
-        //     'other'
-        // ],
-        default: "0" // 0 = booking confirm by vendor , 1 = vendor manually add user wallet without booking , 2 = vendor manually add user wallet with booking
+        default: "0" // 0 = sales, 1 = purchase, 3 = others
+    },
+    subType: {
+        type: String,
+        default: "0"
     },
     isWithAddOnAmount: {
         type: String,
-        default: "0" // 0 = no , 1 = yes
     }
 }, {
     timestamps: true,

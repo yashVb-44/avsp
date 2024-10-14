@@ -1,8 +1,9 @@
 const asyncHandler = require("express-async-handler");
 const Wallet = require("../models/wallet"); // Import Wallet model
+const User = require("../models/user"); // Import Wallet model
 const Booking = require("../models/booking"); // Import Booking model (for reference)
-const { geteUserId } = require("../utils/user");
 const { addTransactionAtAddNewUser, addTransaction, updateTransaction } = require("../utils/transaction");
+const { checkUserWalletExistForVendor } = require("../utils/wallet");
 
 const addUserWallet = asyncHandler(async (req, res) => {
   try {
@@ -71,34 +72,53 @@ const addUserWallet = asyncHandler(async (req, res) => {
   }
 });
 
-const addNewParty = asyncHandler(async (req, res) => {
+const addNewUserParty = asyncHandler(async (req, res) => {
   try {
-    const vendor = req.user;
-    const { name, mobileNo, amount } = req.body;
+    const vendor = req.user; // Vendor is fetched from authenticated request
+    const { name, mobileNo } = req.body;
 
-    const user = await geteUserId({ mobileNo });
+    // Check if the user already exists by mobile number
+    let user = await User.findOne({ mobileNo });
+
+    if (!user) {
+      // If the user doesn't exist, create a new user
+      user = new User({
+        name,
+        mobileNo,
+        isVerified: true, // Set default verification status
+        isActive: true,
+      });
+
+      // Save the newly created user
+      await user.save();
+    }
+
+    // Check if the wallet exists for the user with the vendor
+    const userWallet = await checkUserWalletExistForVendor({ userID: user._id, vendorID: vendor.id });
+
+    if (userWallet) {
+      return res.status(400).json({
+        message: "User (party) already exists for this vendor",
+        type: "error",
+      });
+    }
 
     // If no wallet exists, create a new one for the user
-    let wallet = new Wallet({
+    const wallet = new Wallet({
       name,
-      ownerUser: user._id,
-      amount: amount,
-      virtualAmount: amount,
-      vendor: vendor.id,
+      ownerUser: user._id, // Owner is the user created/found
+      vendor: vendor._id,   // Vendor for the wallet
+      amount: 0,            // Initial amount is 0
+      virtualAmount: 0,
     });
 
     // Save the wallet
-    await wallet.save();
-    await addTransactionAtAddNewUser({
-      transactionType: "1",
-      amount: amount,
-      ownerId: user._id,
-      vendor: vendor.id,
-    });
+    await wallet.save();;
+
+    // Return a success response
     return res.status(201).json({
-      message: "party add successfully",
+      message: "Party added successfully",
       type: "success",
-      wallet,
     });
   } catch (error) {
     console.error(error);
@@ -131,4 +151,4 @@ const getAllParties = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { addUserWallet, addNewParty, getAllParties };
+module.exports = { addUserWallet, addNewUserParty, getAllParties };
