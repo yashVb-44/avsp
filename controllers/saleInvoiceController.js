@@ -2,13 +2,14 @@ const asyncHandler = require('express-async-handler');
 const SaleInvoice = require('../models/saleInvoice');
 const { SaleTransaction } = require('../utils/transaction');
 const { generateInvoiceCode } = require('../utils/invoice');
+const { addRemoveAmountFromWallet } = require('../utils/wallet');
 
 // Add SaleInvoice
 const addSaleInvoice = asyncHandler(async (req, res) => {
     try {
-        const user = req.user;
+        const vendor = req.user;
         const { subTotal, to, type } = req.body
-        const invoice = await generateInvoiceCode({ type: "1", fromVendorId: user.id, toId: to, toModel: "User" })
+        const invoice = await generateInvoiceCode({ type: "1", fromVendorId: vendor.id, toId: to, toModel: "User" })
 
         if (!invoice) {
             return res.status(400).json({
@@ -19,11 +20,12 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
         const newSaleInvoice = new SaleInvoice({
             ...req.body,
             toModel: "User",
-            from: user.id,
+            from: vendor.id,
             invoice: invoice._id
         });
         await newSaleInvoice.save();
-        await addSaleTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "1", billingType: "0", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "User" })
+        await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "1" })
+        await SaleTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "1", billingType: "0", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "User" })
         return res.status(201).json({
             message: 'Sale invoice added successfully',
             type: 'success',

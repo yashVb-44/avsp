@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const transactionSchema = mongoose.Schema({
     customer: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'toModel',
+        ref: 'customerModel',
     },
     customerModel: {
         type: String,
@@ -16,7 +16,7 @@ const transactionSchema = mongoose.Schema({
     },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'toModel',
+        refPath: 'ownerModel',
     },
     booking: [{
         bookingId: {
@@ -70,7 +70,8 @@ const transactionSchema = mongoose.Schema({
     },
     isWithAddOnAmount: {
         type: String,
-    }
+    },
+    note: String
 }, {
     timestamps: true,
 });

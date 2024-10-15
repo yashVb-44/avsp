@@ -2,13 +2,21 @@
 const mongoose = require('mongoose');
 
 const walletSchema = mongoose.Schema({
-    vendor: {
+    customer: {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'Vendor',
+        ref: 'customerModel',
     },
-    user: {
+    customerModel: {
+        type: String,
+        enum: ['User', 'Vendor'],
+    },
+    ownerModel: {
+        type: String,
+        enum: ['User', 'Vendor'],
+    },
+    owner: {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'User',
+        refPath: 'ownerModel',
     },
     name: {
         type: String
@@ -20,14 +28,6 @@ const walletSchema = mongoose.Schema({
     virtualAmount: {
         type: Number,
         default: 0
-    },
-    ownerVendor: {
-        type: mongoose.Schema.Types.ObjectId,
-        refPath: 'Vendor',
-    },
-    ownerUser: {
-        type: mongoose.Schema.Types.ObjectId,
-        refPath: 'User',
     },
 
 }, {

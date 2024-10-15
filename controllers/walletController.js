@@ -5,33 +5,103 @@ const Booking = require("../models/booking"); // Import Booking model (for refer
 const { addTransactionAtAddNewUser, addTransaction, updateTransaction } = require("../utils/transaction");
 const { checkUserWalletExistForVendor } = require("../utils/wallet");
 
+// const addUserWallet = asyncHandler(async (req, res) => {
+//   try {
+//     const vendor = req.user;
+//     const { booking, totalAmount, userId, addOnAmount, walletAmount, isWithAddOnAmount, type } = req.body;
+
+//     if (booking && booking.length > 0) {
+//       // If booking exists in the request body
+//       for (let i = 0; i < booking.length; i++) {
+//         const bookingEntry = booking[i];
+//         const { bookingId, amount: bookingAmount } = bookingEntry;
+
+//         // Validate and find the booking
+//         const existingBooking = await Booking.findById(bookingId);
+//         if (!existingBooking) {
+//           return res.status(400).json({
+//             message: `Invalid booking ID: ${bookingId}`,
+//             type: "error",
+//           });
+//         }
+
+//         // Update the booking's paidAmount
+//         existingBooking.paidAmount += bookingAmount;
+//         await updateTransaction({ bookingId, amount: bookingAmount })
+//         await existingBooking.save();
+//       }
+//     }
+//     // Now handle the wallet update for the user (ownerUser)
+//     let wallet = await Wallet.findOne({
+//       ownerUser: userId,
+//       vendor: vendor.id,
+//     });
+
+//     if (wallet) {
+//       if (isWithAddOnAmount === "1") {
+//         wallet.amount += addOnAmount;
+//         wallet.virtualAmount += addOnAmount;
+//       } else {
+//         wallet.amount -= walletAmount
+//       }
+//     } else {
+//       wallet = new Wallet({
+//         ownerUser: userId,
+//         amount: addOnAmount,
+//         virtualAmount: addOnAmount,
+//         vendor: vendor.id
+//       });
+//     }
+//     // booking && booking.length > 0 ? await addTransaction({ ownerId: userId, vendor: vendor.id, isWithAddOnAmount, amount: isWithAddOnAmount === "1" ? addOnAmount : walletAmount, transactionType: "2", booking }) : addTransaction({ ownerId: userId, vendor: vendor.id, addOnAmount, transactionType: "1", isWithAddOnAmount })
+
+//     // Save the wallet
+//     await wallet.save();
+
+//     return res.status(201).json({
+//       message: "Wallet updated successfully",
+//       type: "success",
+//       wallet,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       message: "Failed to update wallet",
+//       error: error.message,
+//       type: "error",
+//     });
+//   }
+// });
+
 const addUserWallet = asyncHandler(async (req, res) => {
   try {
     const vendor = req.user;
-    const { booking, totalAmount, userId, addOnAmount, walletAmount, isWithAddOnAmount } = req.body;
+    const { transactions, totalAmount, userId, addOnAmount, walletAmount, isWithAddOnAmount, type } = req.body;
 
-    if (booking && booking.length > 0) {
-      // If booking exists in the request body
-      for (let i = 0; i < booking.length; i++) {
-        const bookingEntry = booking[i];
-        const { bookingId, amount: bookingAmount } = bookingEntry;
+    if (transactions && transactions.length > 0) {
+      // Loop through transactions which can include bookings or sale invoices
+      for (let i = 0; i < transactions.length; i++) {
+        const transactionEntry = transactions[i];
+        const { transactionId, amount: transactionAmount, transactionType } = transactionEntry;
 
-        // Validate and find the booking
-        const existingBooking = await Booking.findById(bookingId);
-        if (!existingBooking) {
+        // Check whether the transaction is a booking or sale invoice
+        const transactionModel = transactionType === "booking" ? Booking : SaleInvoice;
+        const existingTransaction = await transactionModel.findById(transactionId);
+
+        if (!existingTransaction) {
           return res.status(400).json({
-            message: `Invalid booking ID: ${bookingId}`,
+            message: `Invalid transaction ID: ${transactionId}`,
             type: "error",
           });
         }
 
-        // Update the booking's paidAmount
-        existingBooking.paidAmount += bookingAmount;
-        await updateTransaction({ bookingId, amount: bookingAmount })
-        await existingBooking.save();
+        // Update paidAmount for bookings or sale invoices
+        existingTransaction.paidAmount += transactionAmount;
+        await updateTransaction({ transactionId, amount: transactionAmount });
+        await existingTransaction.save();
       }
     }
-    // Now handle the wallet update for the user (ownerUser)
+
+    // Now handle wallet update for the user
     let wallet = await Wallet.findOne({
       ownerUser: userId,
       vendor: vendor.id,
@@ -42,17 +112,16 @@ const addUserWallet = asyncHandler(async (req, res) => {
         wallet.amount += addOnAmount;
         wallet.virtualAmount += addOnAmount;
       } else {
-        wallet.amount -= walletAmount
+        wallet.amount -= walletAmount;
       }
     } else {
       wallet = new Wallet({
         ownerUser: userId,
         amount: addOnAmount,
         virtualAmount: addOnAmount,
-        vendor: vendor.id
+        vendor: vendor.id,
       });
     }
-    booking && booking.length > 0 ? await addTransaction({ ownerId: userId, vendor: vendor.id, isWithAddOnAmount, amount: isWithAddOnAmount === "1" ? addOnAmount : walletAmount, transactionType: "2", booking }) : addTransaction({ ownerId: userId, vendor: vendor.id, addOnAmount, transactionType: "1", isWithAddOnAmount })
 
     // Save the wallet
     await wallet.save();
@@ -72,6 +141,8 @@ const addUserWallet = asyncHandler(async (req, res) => {
   }
 });
 
+
+// add new user party
 const addNewUserParty = asyncHandler(async (req, res) => {
   try {
     const vendor = req.user; // Vendor is fetched from authenticated request
@@ -94,7 +165,7 @@ const addNewUserParty = asyncHandler(async (req, res) => {
     }
 
     // Check if the wallet exists for the user with the vendor
-    const userWallet = await checkUserWalletExistForVendor({ userID: user._id, vendorID: vendor.id });
+    const userWallet = await checkUserWalletExistForVendor({ customerID: user._id, ownerID: vendor.id });
 
     if (userWallet) {
       return res.status(400).json({
@@ -106,8 +177,10 @@ const addNewUserParty = asyncHandler(async (req, res) => {
     // If no wallet exists, create a new one for the user
     const wallet = new Wallet({
       name,
-      ownerUser: user._id, // Owner is the user created/found
-      vendor: vendor._id,   // Vendor for the wallet
+      ownerModel: "Vendor",
+      customerModel: "User",
+      customer: user._id, // Owner is the user created/found
+      owner: vendor.id,   // Vendor for the wallet
       amount: 0,            // Initial amount is 0
       virtualAmount: 0,
     });
