@@ -54,24 +54,25 @@ const addRemoveAmountFromWallet = async ({ ownerModel, customerModel, amountType
     try {
         let wallet;
 
-        if (ownerModel === "User") {
+        if (customerModel === "User") {
             // For owner user by vendor (ownerType 0)
             wallet = await Wallet.findOne({ owner, ownerModel, customer });
             if (wallet) {
                 // Update the virtualAmount based on amountType (1 = add, 0 = subtract)
                 amountType === "1" ? wallet.virtualAmount += amount : wallet.virtualAmount -= amount;
+                amountType === "1" ? wallet.amount += amount : wallet.amount -= amount;
             } else {
                 // Create a new wallet if it doesn't exist
                 wallet = new Wallet({
                     owner: owner,
                     ownerModel,
                     customerModel,
-                    amount,
+                    amount: amountType === "1" ? amount : -amount,
                     customer,
                     virtualAmount: amountType === "1" ? amount : -amount
                 });
             }
-        } else if (ownerType === "Vednor") {
+        } else if (customerModel === "Vednor") {
             // For owner vendor by user (ownerType 1)
             wallet = await Wallet.findOne({ owner: owner, ownerModel, customer });
             if (wallet) {
@@ -102,6 +103,67 @@ const addRemoveAmountFromWallet = async ({ ownerModel, customerModel, amountType
     }
 };
 
+const getCustmoreWalletBalance = async ({ custmoreId, ownerID }) => {
+    try {
+        const walletBalance = await Wallet.findOne({ custmore: custmoreId, owner: ownerID })
+        if (walletBalance) {
+            return {
+                isWallet: true,
+                walletBalance
+            }
+        }
+        else {
+            return {
+                isWallet: false
+            }
+        }
+    } catch (error) {
+        return {
+            isWallet: false
+        }
+    }
+}
+
+const processWalletAndTransaction = async ({ to, vendor, subTotal }) => {
+    try {
+        // Get the customer wallet balance and check if the wallet exists
+        const { isWallet, walletBalance } = await getCustmoreWalletBalance({ custmoreId: to, ownerID: vendor.id });
+        let remainingAmount = subTotal; // Initialize remaining amount as the subtotal
+        let walletDebit = 0; // Initialize the wallet debit amount
+        let isWalletDebit = false
+        let isTottalyPaid = false
+        if (isWallet) {
+            // Scenario 1: Wallet has a positive balance
+            if (walletBalance > 0) {
+                if (walletBalance >= subTotal) {
+                    // Scenario 4: Wallet balance is greater than or equal to subtotal
+                    walletDebit = subTotal;
+                    remainingAmount = 0;
+                    isWalletDebit = true
+                    isTottalyPaid = true
+                } else {
+                    // Scenario 1: Wallet balance is less than the subtotal
+                    walletDebit = walletBalance;
+                    remainingAmount = subTotal - walletBalance;
+                    isWalletDebit = true
+                }
+            } else if (walletBalance < 0) {
+                // Scenario 3: Wallet has a negative balance, ignore wallet and keep remaining as subtotal
+                walletDebit = 0;
+                remainingAmount = subTotal;
+            }
+        } else {
+            // Scenario 2: No wallet, so remaining is the subtotal
+            walletDebit = 0;
+            remainingAmount = subTotal;
+        }
+
+        return { walletDebit, remainingAmount, isWalletDebit, isTottalyPaid };
+    } catch (error) {
+        console.error("Error processing wallet and transaction:", error);
+        throw new Error("Failed to process wallet and transaction");
+    }
+};
 
 const checkUserWalletExistForVendor = async ({ customerID, ownerID }) => {
     try {
@@ -113,4 +175,4 @@ const checkUserWalletExistForVendor = async ({ customerID, ownerID }) => {
 };
 
 
-module.exports = { addRemoveAmountFromWallet, checkUserWalletExistForVendor }  
+module.exports = { addRemoveAmountFromWallet, checkUserWalletExistForVendor, getCustmoreWalletBalance, processWalletAndTransaction }  

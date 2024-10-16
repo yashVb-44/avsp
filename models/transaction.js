@@ -48,7 +48,7 @@ const transactionSchema = mongoose.Schema({
     },
     paymentType: {
         type: String,
-        default: "0" // 0 = cash , 1 = online
+        default: "0" // 0 = cash , 1 = online, 2 = wallet
     },
     amount: {
         type: Number
@@ -69,7 +69,10 @@ const transactionSchema = mongoose.Schema({
         default: "0"
     },
     isWithAddOnAmount: {
-        type: String,
+        type: String, // 0 = no, 1= yes
+    },
+    isDebitFromWallet:{
+        type : String // 0 = no, 1 = yes
     },
     note: String
 }, {

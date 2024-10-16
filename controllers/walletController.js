@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Wallet = require("../models/wallet"); // Import Wallet model
 const User = require("../models/user"); // Import Wallet model
+const Vendor = require("../models/vendor"); // Import Wallet model
 const Booking = require("../models/booking"); // Import Booking model (for reference)
 const { addTransactionAtAddNewUser, addTransaction, updateTransaction } = require("../utils/transaction");
 const { checkUserWalletExistForVendor } = require("../utils/wallet");
@@ -141,7 +142,6 @@ const addUserWallet = asyncHandler(async (req, res) => {
   }
 });
 
-
 // add new user party
 const addNewUserParty = asyncHandler(async (req, res) => {
   try {
@@ -206,18 +206,27 @@ const addNewUserParty = asyncHandler(async (req, res) => {
 const getAllParties = asyncHandler(async (req, res) => {
   try {
     const vendor = req.user;
+    const wallets = await Wallet.find({ owner: vendor.id });
+    // Find all wallet entries where the owner is the current vendor
+    const parties = await Promise.all(wallets.map(async (wallet) => {
+      let populatedWallet = wallet.toObject();
+      if (wallet.customerModel === 'User') {
+        populatedWallet.customer = await User.findById(wallet.customer).lean();
+      } else if (wallet.customerModel === 'Vendor') {
+        populatedWallet.customer = await Vendor.findById(wallet.customer).lean();
+      }
+      return populatedWallet;
+    }));
 
-    const parties = await Wallet.find({ vendor: vendor.id });
-
-    return res.status(201).json({
-      message: "all parties get successfully",
+    return res.status(200).json({
+      message: "All parties retrieved successfully",
       type: "success",
       parties,
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
-      message: "Failed to get parties",
+      message: "Failed to retrieve parties",
       error: error.message,
       type: "error",
     });

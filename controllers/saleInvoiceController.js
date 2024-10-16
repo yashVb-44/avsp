@@ -2,7 +2,7 @@ const asyncHandler = require('express-async-handler');
 const SaleInvoice = require('../models/saleInvoice');
 const { SaleTransaction } = require('../utils/transaction');
 const { generateInvoiceCode } = require('../utils/invoice');
-const { addRemoveAmountFromWallet } = require('../utils/wallet');
+const { addRemoveAmountFromWallet, getCustmoreWalletBalance, processWalletAndTransaction } = require('../utils/wallet');
 
 // Add SaleInvoice
 const addSaleInvoice = asyncHandler(async (req, res) => {
@@ -24,8 +24,9 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
             invoice: invoice._id
         });
         await newSaleInvoice.save();
-        await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "1" })
-        await SaleTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "1", billingType: "0", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "User" })
+        const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid } = processWalletAndTransaction({ to, vendor, subTotal })
+        await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "0" })
+        await SaleTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "1", billingType: isTottalyPaid ? "1" : "0", amountType: "0", paymentType: "2", amount: walletDebit, totalAmount: subTotal, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: isWalletDebit ? "1" : "0", isWithAddOnAmount: "0" })
         return res.status(201).json({
             message: 'Sale invoice added successfully',
             type: 'success',
@@ -60,6 +61,7 @@ const returnSaleInvoice = asyncHandler(async (req, res) => {
             invoice: invoice._id
         });
         await newSaleInvoice.save();
+        // const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid } = processWalletAndTransaction({ to, vendor, subTotal })
         await SaleTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "2", billingType: "0", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "User" })
         return res.status(201).json({
             message: 'Retrun Sale invoice added successfully',
