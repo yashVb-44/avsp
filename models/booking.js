@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const bookingSchema = new Schema({
+    invoice: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Invoice',
+    },
     user: {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -184,7 +188,15 @@ const bookingSchema = new Schema({
     paymentMode: {
         type: String,
         default: "0"
-    }
+    },
+    remainingAmount: {
+        type: Number,
+        default: 0
+    },
+    isPaid: {
+        type: Boolean,
+        default: false
+    },
 }, {
     timestamps: true
 });

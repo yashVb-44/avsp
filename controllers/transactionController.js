@@ -4,10 +4,9 @@ const Transaction = require('../models/transaction')
 const getVendorAllTransaction = expressAsyncHandler(async (req, res) => {
     try {
         const vendor = req.user;
+        const transaction = await Transaction.find({ owner: vendor.id }).sort({ createdAt: -1 })
 
-        const transaction = await Transaction.find({ vendor: vendor.id });
-
-        return res.status(201).json({
+        return res.status(200).json({
             message: "all transaction get successfully",
             type: "success",
             transaction,

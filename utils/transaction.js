@@ -70,7 +70,7 @@ const addTransaction = async ({
   }
 };
 
-const SaleTransaction = async ({ customer, owner, amount, amountType, billingType, transactionType, subType, invoice, invoiceId, ownerModel, customerModel, isWithAddOnAmount, isDebitFromWallet, remainingAmount, totalAmount }) => {
+const SaleTransaction = async ({ note,paymentType, addOnAmount, customer, owner, amount, amountType, billingType, transactionType, subType, invoice, invoiceId, ownerModel, customerModel, isWithAddOnAmount, isDebitFromWallet, remainingAmount, totalAmount }) => {
   try {
     let newTransaction = await new Transaction({
       customer,
@@ -86,12 +86,17 @@ const SaleTransaction = async ({ customer, owner, amount, amountType, billingTyp
       totalAmount,
       remainingAmount,
       isDebitFromWallet,
-      isWithAddOnAmount
+      isWithAddOnAmount,
+      note,
+      addOnAmount,
+      paymentType
     });
     if (subType === "1") {
       newTransaction.invoiceId = invoiceId
     } else if (subType === "2") {
       newTransaction.invoiceId = invoiceId
+    } else if (subType === "3") {
+      newTransaction.inovice = invoice
     }
     await newTransaction.save()
     return newTransaction

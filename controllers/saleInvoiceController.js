@@ -17,16 +17,24 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
                 type: 'error',
             });
         }
-        const newSaleInvoice = new SaleInvoice({
+        let newSaleInvoice = new SaleInvoice({
             ...req.body,
             toModel: "User",
             from: vendor.id,
-            invoice: invoice._id
+            invoice: invoice._id,
+            remainingAmount: subTotal
         });
-        await newSaleInvoice.save();
-        const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid } = processWalletAndTransaction({ to, vendor, subTotal })
+        const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid, walletBalance } = processWalletAndTransaction({ to, vendor, subTotal })
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "0" })
         await SaleTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "1", billingType: isTottalyPaid ? "1" : "0", amountType: "0", paymentType: "2", amount: walletDebit, totalAmount: subTotal, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: isWalletDebit ? "1" : "0", isWithAddOnAmount: "0" })
+        if (walletBalance >= subTotal) {
+            newSaleInvoice.isPaid = true
+            newSaleInvoice.remainingAmount = 0
+        }
+        else if (walletBalance <= subTotal) {
+            newSaleInvoice.remainingAmount -= subTotal
+        }
+        await newSaleInvoice.save();
         return res.status(201).json({
             message: 'Sale invoice added successfully',
             type: 'success',
@@ -62,7 +70,8 @@ const returnSaleInvoice = asyncHandler(async (req, res) => {
         });
         await newSaleInvoice.save();
         // const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid } = processWalletAndTransaction({ to, vendor, subTotal })
-        await SaleTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "2", billingType: "0", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "User" })
+        await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "1" })
+        await SaleTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "2", amountType: "0", paymentType: "2", totalAmount: subTotal, ownerModel: "Vendor", customerModel: "User" })
         return res.status(201).json({
             message: 'Retrun Sale invoice added successfully',
             type: 'success',
@@ -71,6 +80,43 @@ const returnSaleInvoice = asyncHandler(async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: 'Failed to add return sale invoice',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
+// counter SaleInvoice
+const counterSaleInvoice = asyncHandler(async (req, res) => {
+    try {
+        const user = req.user;
+        const to = req.user.id
+        const { subTotal, type } = req.body
+        const invoice = await generateInvoiceCode({ type: "2", fromVendorId: user.id, toId: to, toModel: "Vendor" })
+
+        if (!invoice) {
+            return res.status(400).json({
+                message: 'Failed to generate invoice',
+                type: 'error',
+            });
+        }
+        const newSaleInvoice = new SaleInvoice({
+            ...req.body,
+            toModel: "Vendor",
+            from: user.id,
+            to,
+            invoice: invoice._id
+        });
+        await newSaleInvoice.save();
+        await SaleTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "5", billingType: "1", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "Vendor" })
+        return res.status(201).json({
+            message: 'Counter Sale invoice added successfully',
+            type: 'success',
+            saleInvoice: newSaleInvoice,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to add counter sale invoice',
             error: error.message,
             type: 'error',
         });
@@ -86,7 +132,7 @@ const getSaleInvoice = asyncHandler(async (req, res) => {
 
         if (id) {
             // Get a specific sale invoice by ID
-            saleInvoice = await SaleInvoice.findById(id).populate('to from productWithPrice.productId');
+            saleInvoice = await SaleInvoice.findById(id).populate('to from productWithPrice.productId invoice');
 
             if (!saleInvoice) {
                 return res.status(404).json({
@@ -96,7 +142,7 @@ const getSaleInvoice = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all sale invoices for the logged-in vendor
-            saleInvoice = await SaleInvoice.find({ from: userId }).populate('to from productWithPrice.productId').sort({ createdAt: -1 })
+            saleInvoice = await SaleInvoice.find({ from: userId }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
         }
 
         return res.status(200).json({
@@ -121,7 +167,7 @@ const getSaleInvoicePartyWise = asyncHandler(async (req, res) => {
 
         if (userId) {
             // Get all sale invoices for the logged-in vendor
-            saleInvoice = await SaleInvoice.find({ from: vendorId, to: userId }).populate('to from productWithPrice.productId').sort({ createdAt: -1 })
+            saleInvoice = await SaleInvoice.find({ from: vendorId, to: userId }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
 
             if (!saleInvoice) {
                 return res.status(404).json({
@@ -221,5 +267,6 @@ module.exports = {
     getSaleInvoice,
     updateSaleInvoice,
     deleteSaleInvoice,
-    getSaleInvoicePartyWise
+    getSaleInvoicePartyWise,
+    counterSaleInvoice
 };

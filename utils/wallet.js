@@ -158,7 +158,7 @@ const processWalletAndTransaction = async ({ to, vendor, subTotal }) => {
             remainingAmount = subTotal;
         }
 
-        return { walletDebit, remainingAmount, isWalletDebit, isTottalyPaid };
+        return { walletDebit, remainingAmount, isWalletDebit, isTottalyPaid , walletBalance};
     } catch (error) {
         console.error("Error processing wallet and transaction:", error);
         throw new Error("Failed to process wallet and transaction");

@@ -3,7 +3,8 @@ const Wallet = require("../models/wallet"); // Import Wallet model
 const User = require("../models/user"); // Import Wallet model
 const Vendor = require("../models/vendor"); // Import Wallet model
 const Booking = require("../models/booking"); // Import Booking model (for reference)
-const { addTransactionAtAddNewUser, addTransaction, updateTransaction } = require("../utils/transaction");
+const SaleInvoice = require("../models/saleInvoice");
+const { addTransactionAtAddNewUser, addTransaction, updateTransaction, SaleTransaction } = require("../utils/transaction");
 const { checkUserWalletExistForVendor } = require("../utils/wallet");
 
 // const addUserWallet = asyncHandler(async (req, res) => {
@@ -76,16 +77,16 @@ const { checkUserWalletExistForVendor } = require("../utils/wallet");
 const addUserWallet = asyncHandler(async (req, res) => {
   try {
     const vendor = req.user;
-    const { transactions, totalAmount, userId, addOnAmount, walletAmount, isWithAddOnAmount, type } = req.body;
+    const { transactions, totalAmount, userId, addOnAmount, walletAmount, isWithAddOnAmount, type, paymentType, note } = req.body;
 
     if (transactions && transactions.length > 0) {
       // Loop through transactions which can include bookings or sale invoices
       for (let i = 0; i < transactions.length; i++) {
         const transactionEntry = transactions[i];
-        const { transactionId, amount: transactionAmount, transactionType } = transactionEntry;
+        const { id: transactionId, amount: transactionAmount, transactionType, remainingAmount } = transactionEntry;
 
         // Check whether the transaction is a booking or sale invoice
-        const transactionModel = transactionType === "booking" ? Booking : SaleInvoice;
+        const transactionModel = transactionType === "Booking" ? Booking : SaleInvoice;
         const existingTransaction = await transactionModel.findById(transactionId);
 
         if (!existingTransaction) {
@@ -97,15 +98,19 @@ const addUserWallet = asyncHandler(async (req, res) => {
 
         // Update paidAmount for bookings or sale invoices
         existingTransaction.paidAmount += transactionAmount;
-        await updateTransaction({ transactionId, amount: transactionAmount });
+        existingTransaction.remainingAmount = remainingAmount
+        if (remainingAmount === 0) {
+          existingTransaction.isPaid = true
+        }
+        // await updateTransaction({ transactionId, amount: transactionAmount });
         await existingTransaction.save();
       }
     }
 
     // Now handle wallet update for the user
     let wallet = await Wallet.findOne({
-      ownerUser: userId,
-      vendor: vendor.id,
+      customer: userId,
+      owner: vendor.id,
     });
 
     if (wallet) {
@@ -117,12 +122,16 @@ const addUserWallet = asyncHandler(async (req, res) => {
       }
     } else {
       wallet = new Wallet({
-        ownerUser: userId,
+        customer: userId,
+        customerModel: "User",
+        ownerModel: "Vendor",
         amount: addOnAmount,
         virtualAmount: addOnAmount,
-        vendor: vendor.id,
+        owner: vendor.id,
       });
     }
+
+    await SaleTransaction({ customer: userId, owner: vendor.id, invoice: transactions || [], transactionType: "0", subType: "3", amountType: "0", amount: walletAmount, totalAmount: totalAmount, addOnAmount: addOnAmount || 0, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: "1", isWithAddOnAmount: isWithAddOnAmount ? "1" : "0", note, paymentType })
 
     // Save the wallet
     await wallet.save();
@@ -194,7 +203,7 @@ const addNewUserParty = asyncHandler(async (req, res) => {
       type: "success",
     });
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     return res.status(500).json({
       message: "Failed to add party",
       error: error.message,
@@ -206,22 +215,34 @@ const addNewUserParty = asyncHandler(async (req, res) => {
 const getAllParties = asyncHandler(async (req, res) => {
   try {
     const vendor = req.user;
-    const wallets = await Wallet.find({ owner: vendor.id });
-    // Find all wallet entries where the owner is the current vendor
+    const searchQuery = req.query.search || ''; // Fetch the search query from request
+
+    const wallets = await Wallet.find({ owner: vendor.id }).sort({ createdAt: -1 });
+
+    // Find all wallet entries and populate customer information
     const parties = await Promise.all(wallets.map(async (wallet) => {
       let populatedWallet = wallet.toObject();
       if (wallet.customerModel === 'User') {
-        populatedWallet.customer = await User.findById(wallet.customer).lean();
+        populatedWallet.customer = await User.findOne({
+          _id: wallet.customer,
+          name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
+        }).lean();
       } else if (wallet.customerModel === 'Vendor') {
-        populatedWallet.customer = await Vendor.findById(wallet.customer).lean();
+        populatedWallet.customer = await Vendor.findOne({
+          _id: wallet.customer,
+          name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
+        }).lean();
       }
       return populatedWallet;
     }));
 
+    // Filter out wallets where the customer could not be found (null)
+    const filteredParties = parties.filter(party => party.customer);
+
     return res.status(200).json({
       message: "All parties retrieved successfully",
       type: "success",
-      parties,
+      parties: filteredParties,
     });
   } catch (error) {
     console.error(error);
@@ -233,4 +254,131 @@ const getAllParties = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { addUserWallet, addNewUserParty, getAllParties };
+const getUserParties = asyncHandler(async (req, res) => {
+  try {
+    const vendor = req.user;
+    const searchQuery = req.query.search || ''; // Fetch the search query from request
+
+    const wallets = await Wallet.find({ owner: vendor.id, customerModel: 'User' }).sort({ createdAt: -1 });
+
+    // Find all wallet entries for users and populate customer information
+    const parties = await Promise.all(wallets.map(async (wallet) => {
+      let populatedWallet = wallet.toObject();
+      populatedWallet.customer = await User.findOne({
+        _id: wallet.customer,
+        name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
+      }).lean();
+      return populatedWallet;
+    }));
+
+    // Filter out wallets where the customer could not be found (null)
+    const filteredParties = parties.filter(party => party.customer);
+
+    return res.status(200).json({
+      message: "User parties retrieved successfully",
+      type: "success",
+      parties: filteredParties,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to retrieve user parties",
+      error: error.message,
+      type: "error",
+    });
+  }
+});
+
+const getVendorParties = asyncHandler(async (req, res) => {
+  try {
+    const vendor = req.user;
+    const searchQuery = req.query.search || ''; // Fetch the search query from request
+
+    const wallets = await Wallet.find({ owner: vendor.id, customerModel: 'Vendor' }).sort({ createdAt: -1 });
+
+    // Find all wallet entries for vendors and populate customer information
+    const parties = await Promise.all(wallets.map(async (wallet) => {
+      let populatedWallet = wallet.toObject();
+      populatedWallet.customer = await Vendor.findOne({
+        _id: wallet.customer,
+        name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
+      }).lean();
+      return populatedWallet;
+    }));
+
+    // Filter out wallets where the customer could not be found (null)
+    const filteredParties = parties.filter(party => party.customer);
+
+    return res.status(200).json({
+      message: "Vendor parties retrieved successfully",
+      type: "success",
+      parties: filteredParties,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to retrieve vendor parties",
+      error: error.message,
+      type: "error",
+    });
+  }
+});
+
+
+// get user pending payments 
+const getUserPendingPayments = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.params.userId; // Assuming you're passing user ID via params
+    const vendorId = req.user.id
+
+    // Find all unpaid bookings where the remaining amount is greater than 0
+    const pendingBookings = await Booking.find({
+      user: userId,
+      isPaid: false,
+      vendor: vendorId,
+      // remainingAmount: { $gt: 0 }
+    }).lean();
+    // Find all unpaid sale invoices where the remaining amount is greater than 0
+    const pendingSaleInvoices = await SaleInvoice.find({
+      to: userId,
+      toModel: 'User',
+      isPaid: false,
+      from: vendorId
+      // remainingAmount: { $gt: 0 }
+    }).lean();
+
+    // Prepare the result combining both bookings and sale invoices
+    const pendingPayments = [
+      ...pendingBookings.map(booking => ({
+        type: 'Booking',
+        id: booking._id,
+        remainingAmount: booking.remainingAmount,
+        totalAmount: booking.payableAmount
+        // details: booking,
+      })),
+      ...pendingSaleInvoices.map(invoice => ({
+        type: 'SaleInvoice',
+        id: invoice._id,
+        remainingAmount: invoice.remainingAmount,
+        totalAmount: invoice.subTotal
+        // details: invoice,
+      })),
+    ];
+
+    return res.status(200).json({
+      message: "Pending payments retrieved successfully",
+      type: "success",
+      pendingPayments,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to retrieve pending payments",
+      error: error.message,
+      type: "error",
+    });
+  }
+});
+
+
+module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties };

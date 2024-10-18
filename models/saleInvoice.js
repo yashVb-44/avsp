@@ -45,6 +45,14 @@ const saleInvoiceSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    remainingAmount: {
+        type: Number,
+        default: 0
+    },
+    isPaid: {
+        type: Boolean,
+        default: false
+    },
     date: String
 }, {
     timestamps: true,

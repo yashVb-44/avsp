@@ -18,29 +18,30 @@ const transactionSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         refPath: 'ownerModel',
     },
-    booking: [{
-        bookingId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Booking',
+    inovice: [{
+        id: {
+            type: mongoose.Schema.Types.ObjectId,  
         },
-        amount: {
-            type: Number,
-        }
+        amount: Number,
+        remainingAmount: Number,
+        transactionType: {
+            type: String,
+            enum: ["Booking", "SaleInvoice"]
+        } // for booking = booking
     }],
     bookingId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking',
     },
-    invoice: [{
-        type: mongoose.Schema.Types.ObjectId,
-        refPath: 'Invoice',
-    }],
     invoiceId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Invoice',
     },
     totalAmount: {
         type: Number,
+    },
+    addOnAmount: {
+        type: Number
     },
     amountType: {
         type: String,
@@ -71,8 +72,8 @@ const transactionSchema = mongoose.Schema({
     isWithAddOnAmount: {
         type: String, // 0 = no, 1= yes
     },
-    isDebitFromWallet:{
-        type : String // 0 = no, 1 = yes
+    isDebitFromWallet: {
+        type: String // 0 = no, 1 = yes
     },
     note: String
 }, {

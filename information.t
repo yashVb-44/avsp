@@ -74,6 +74,16 @@
                 5 = counter sale
                 6 = other
 
+=> paymentType ->   0 = cash , 1 = online, 2 = wallet
+
+=> billingType -> 0 = unpaid, 1 = paid, 2 = nothing
+
+=> transectionType -> 1 = invoice  
+                        2 = return
+                        3 = paymentin
+                        4 = paymentout
+                        5 = countersale
+
 ** table -> (invoice) 
 => type  ->  0= booking
                         1= sale

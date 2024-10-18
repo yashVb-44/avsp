@@ -9,6 +9,7 @@ const Product = require('../models/product');
 const { addRemoveAmountFromWallet } = require('../utils/wallet');
 const { addUserWallet } = require('./walletController');
 const { addTransaction } = require('../utils/transaction');
+const { generateInvoiceCode } = require('../utils/invoice');
 // const MyVehicle = require('../models/MyVehicle');
 // const Vendor = require('../models/Vendor');
 // const User = require('../models/User');
@@ -25,8 +26,11 @@ const addBooking = async (req, res) => {
             return res.status(400).json({ message: "Invalid service type" });
         }
 
+        const invoice = await generateInvoiceCode({ type: "0", fromVendorId: vendor, toId: user.id, toModel: "User" })
+
         // Initialize booking data
         let bookingData = {
+            invoice: invoice?._id,
             user: user.id,
             vendor,
             myVehicle,
@@ -468,7 +472,8 @@ const updateBooking = async (req, res) => {
         Object.assign(booking, updates);
         if (updates.status === "6") {
             await addRemoveAmountFromWallet({ ownerType: "0", ownerId: booking.user, amount: booking.payableAmount, amountType: "0", vendor: vendor.id })
-            await addTransaction({ ownerType: "0", ownerId: booking.user, booking: booking, amountType: "0", vendor: vendor.id , transactionType : "0"})
+            await addTransaction({ ownerType: "0", ownerId: booking.user, booking: booking, amountType: "0", vendor: vendor.id, transactionType: "0" })
+            booking.remainingAmount = booking.payableAmount
         }
         // Save the updated booking
         await booking.save();
