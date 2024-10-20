@@ -1,14 +1,15 @@
 const asyncHandler = require('express-async-handler');
 const SaleInvoice = require('../models/saleInvoice');
-const { SaleTransaction } = require('../utils/transaction');
+const { SaleAndPurchaseTransaction } = require('../utils/transaction');
 const { generateInvoiceCode } = require('../utils/invoice');
 const { addRemoveAmountFromWallet, getCustmoreWalletBalance, processWalletAndTransaction } = require('../utils/wallet');
+const { updateProductStock } = require('../utils/product');
 
 // Add SaleInvoice
 const addSaleInvoice = asyncHandler(async (req, res) => {
     try {
         const vendor = req.user;
-        const { subTotal, to, type } = req.body
+        const { subTotal, to, type, productWithPrice } = req.body
         const invoice = await generateInvoiceCode({ type: "1", fromVendorId: vendor.id, toId: to, toModel: "User" })
 
         if (!invoice) {
@@ -24,9 +25,9 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
             invoice: invoice._id,
             remainingAmount: subTotal
         });
-        const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid, walletBalance } = processWalletAndTransaction({ to, vendor, subTotal })
+        const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid, walletBalance } = await processWalletAndTransaction({ to, vendor, subTotal })
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "0" })
-        await SaleTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "1", billingType: isTottalyPaid ? "1" : "0", amountType: "0", paymentType: "2", amount: walletDebit, totalAmount: subTotal, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: isWalletDebit ? "1" : "0", isWithAddOnAmount: "0" })
+        await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "1", billingType: isTottalyPaid ? "1" : "0", amountType: "0", paymentType: "2", amount: walletDebit, totalAmount: subTotal, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: isWalletDebit ? "1" : "0", isWithAddOnAmount: "0" })
         if (walletBalance >= subTotal) {
             newSaleInvoice.isPaid = true
             newSaleInvoice.remainingAmount = 0
@@ -34,6 +35,7 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
         else if (walletBalance <= subTotal) {
             newSaleInvoice.remainingAmount -= subTotal
         }
+        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '0' })
         await newSaleInvoice.save();
         return res.status(201).json({
             message: 'Sale invoice added successfully',
@@ -52,9 +54,9 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
 // return SaleInvoice
 const returnSaleInvoice = asyncHandler(async (req, res) => {
     try {
-        const user = req.user;
-        const { subTotal, to, type } = req.body
-        const invoice = await generateInvoiceCode({ type: "3", fromVendorId: user.id, toId: to, toModel: "User" })
+        const vendor = req.user;
+        const { subTotal, to, type, productWithPrice } = req.body
+        const invoice = await generateInvoiceCode({ type: "3", fromVendorId: vendor.id, toId: to, toModel: "User" })
 
         if (!invoice) {
             return res.status(400).json({
@@ -65,19 +67,21 @@ const returnSaleInvoice = asyncHandler(async (req, res) => {
         const newSaleInvoice = new SaleInvoice({
             ...req.body,
             toModel: "User",
-            from: user.id,
+            from: vendor.id,
             invoice: invoice._id
         });
         await newSaleInvoice.save();
         // const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid } = processWalletAndTransaction({ to, vendor, subTotal })
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "1" })
-        await SaleTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "2", amountType: "0", paymentType: "2", totalAmount: subTotal, ownerModel: "Vendor", customerModel: "User" })
+        await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "2", amountType: "0", paymentType: "2", totalAmount: subTotal, ownerModel: "Vendor", customerModel: "User" })
+        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '1' })
         return res.status(201).json({
             message: 'Retrun Sale invoice added successfully',
             type: 'success',
             saleInvoice: newSaleInvoice,
         });
     } catch (error) {
+        console.log(error)
         return res.status(500).json({
             message: 'Failed to add return sale invoice',
             error: error.message,
@@ -108,7 +112,7 @@ const counterSaleInvoice = asyncHandler(async (req, res) => {
             invoice: invoice._id
         });
         await newSaleInvoice.save();
-        await SaleTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "5", billingType: "1", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "Vendor" })
+        await SaleAndPurchaseTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "5", billingType: "1", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "Vendor" })
         return res.status(201).json({
             message: 'Counter Sale invoice added successfully',
             type: 'success',
@@ -127,7 +131,7 @@ const counterSaleInvoice = asyncHandler(async (req, res) => {
 const getSaleInvoice = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id
+        const vendorId = req.user.id
         let saleInvoice;
 
         if (id) {
@@ -142,7 +146,7 @@ const getSaleInvoice = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all sale invoices for the logged-in vendor
-            saleInvoice = await SaleInvoice.find({ from: userId }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
+            saleInvoice = await SaleInvoice.find({ from: vendorId }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
         }
 
         return res.status(200).json({

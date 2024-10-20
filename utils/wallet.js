@@ -64,7 +64,7 @@ const addRemoveAmountFromWallet = async ({ ownerModel, customerModel, amountType
             } else {
                 // Create a new wallet if it doesn't exist
                 wallet = new Wallet({
-                    owner: owner,
+                    owner,
                     ownerModel,
                     customerModel,
                     amount: amountType === "1" ? amount : -amount,
@@ -72,25 +72,26 @@ const addRemoveAmountFromWallet = async ({ ownerModel, customerModel, amountType
                     virtualAmount: amountType === "1" ? amount : -amount
                 });
             }
-        } else if (customerModel === "Vednor") {
+        } else if (customerModel === "TempVendor") {
             // For owner vendor by user (ownerType 1)
-            wallet = await Wallet.findOne({ owner: owner, ownerModel, customer });
+            wallet = await Wallet.findOne({ owner, ownerModel, customer });
             if (wallet) {
                 // Update the virtualAmount based on amountType (1 = add, 0 = subtract)
                 amountType === "1" ? wallet.virtualAmount += amount : wallet.virtualAmount -= amount;
+                amountType === "1" ? wallet.amount += amount : wallet.amount -= amount;
             } else {
                 // Create a new wallet if it doesn't exist
                 wallet = new Wallet({
-                    owner: owner,
+                    owner,
                     ownerModel,
                     customerModel,
                     customer,
-                    amount,
+                    amount: amountType === "1" ? amount : -amount,
                     virtualAmount: amountType === "1" ? amount : -amount
                 });
             }
         } else {
-            throw new Error("Invalid ownerType. Must be 0 for user or 1 for vendor.");
+            wallet = await Wallet.findOne({ owner, ownerModel });
         }
 
         // Save the updated or newly created wallet entry
@@ -103,13 +104,13 @@ const addRemoveAmountFromWallet = async ({ ownerModel, customerModel, amountType
     }
 };
 
-const getCustmoreWalletBalance = async ({ custmoreId, ownerID }) => {
+const getCustmoreWalletBalance = async ({ customerId, ownerID }) => {
     try {
-        const walletBalance = await Wallet.findOne({ custmore: custmoreId, owner: ownerID })
+        const walletBalance = await Wallet.findOne({ customer: customerId, owner: ownerID })
         if (walletBalance) {
             return {
                 isWallet: true,
-                walletBalance
+                walletBalance: walletBalance.amount
             }
         }
         else {
@@ -127,7 +128,7 @@ const getCustmoreWalletBalance = async ({ custmoreId, ownerID }) => {
 const processWalletAndTransaction = async ({ to, vendor, subTotal }) => {
     try {
         // Get the customer wallet balance and check if the wallet exists
-        const { isWallet, walletBalance } = await getCustmoreWalletBalance({ custmoreId: to, ownerID: vendor.id });
+        const { isWallet, walletBalance } = await getCustmoreWalletBalance({ customerId: to, ownerID: vendor.id });
         let remainingAmount = subTotal; // Initialize remaining amount as the subtotal
         let walletDebit = 0; // Initialize the wallet debit amount
         let isWalletDebit = false
@@ -158,7 +159,40 @@ const processWalletAndTransaction = async ({ to, vendor, subTotal }) => {
             remainingAmount = subTotal;
         }
 
-        return { walletDebit, remainingAmount, isWalletDebit, isTottalyPaid , walletBalance};
+        return { walletDebit, remainingAmount, isWalletDebit, isTottalyPaid, walletBalance };
+    } catch (error) {
+        console.error("Error processing wallet and transaction:", error);
+        throw new Error("Failed to process wallet and transaction");
+    }
+};
+
+const processWalletAndTransactionForVendor = async ({ to, vendor, subTotal }) => {
+    try {
+        // Get the customer wallet balance and check if the wallet exists
+        const { isWallet, walletBalance } = await getCustmoreWalletBalance({ customerId: to, ownerID: vendor.id });
+        let remainingAmount = subTotal; // Initialize remaining amount as the subtotal
+        let walletDebit = 0; // Initialize the wallet debit amount
+        let isTottalyPaid = false
+        if (isWallet) {
+            if (walletBalance < 0) {
+                if (subTotal >= parseInt(walletBalance)) {
+                    walletDebit = walletBalance;
+                    remainingAmount = subTotal - walletBalance;
+                } else {
+                    walletDebit = subTotal;
+                    remainingAmount = walletBalance - subTotal;
+                    isTottalyPaid = true
+                }
+            } else if (walletBalance > 0) {
+                walletDebit = 0;
+                remainingAmount = subTotal;
+            }
+        } else {
+            walletDebit = 0;
+            remainingAmount = subTotal;
+        }
+
+        return { walletDebit, remainingAmount, isTottalyPaid, walletBalance };
     } catch (error) {
         console.error("Error processing wallet and transaction:", error);
         throw new Error("Failed to process wallet and transaction");
@@ -175,4 +209,4 @@ const checkUserWalletExistForVendor = async ({ customerID, ownerID }) => {
 };
 
 
-module.exports = { addRemoveAmountFromWallet, checkUserWalletExistForVendor, getCustmoreWalletBalance, processWalletAndTransaction }  
+module.exports = { addRemoveAmountFromWallet, checkUserWalletExistForVendor, getCustmoreWalletBalance, processWalletAndTransaction, processWalletAndTransactionForVendor }  

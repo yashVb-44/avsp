@@ -22,7 +22,7 @@ const invoiceSchema = new mongoose.Schema({
     toModel: {
         type: String,
         required: true,
-        enum: ['User', 'Vendor'],
+        enum: ['User', 'Vendor', 'TempVendor'],
     },
 }, {
     timestamps: true,

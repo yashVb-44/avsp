@@ -96,3 +96,7 @@
 => type  ->             0= sale
                         1= counter sale
                         2 = sale return 
+
+** table -> (purchase invoice) 
+=> type  ->             0= purchase
+                        1= purchase return 

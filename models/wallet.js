@@ -8,7 +8,7 @@ const walletSchema = mongoose.Schema({
     },
     customerModel: {
         type: String,
-        enum: ['User', 'Vendor'],
+        enum: ['User', 'Vendor', 'TempVendor'],
     },
     ownerModel: {
         type: String,

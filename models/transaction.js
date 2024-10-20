@@ -8,7 +8,7 @@ const transactionSchema = mongoose.Schema({
     },
     customerModel: {
         type: String,
-        enum: ['User', 'Vendor'],
+        enum: ['User', 'Vendor', 'TempVendor'],
     },
     ownerModel: {
         type: String,
@@ -20,7 +20,7 @@ const transactionSchema = mongoose.Schema({
     },
     inovice: [{
         id: {
-            type: mongoose.Schema.Types.ObjectId,  
+            type: mongoose.Schema.Types.ObjectId,
         },
         amount: Number,
         remainingAmount: Number,

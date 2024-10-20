@@ -6,10 +6,11 @@ const { ganerateOneLineImageUrls } = require('../utils/utils');
 const ServiceWithPrice = require('../models/serviceWithPrice');
 const ShopService = require('../models/shopService');
 const Product = require('../models/product');
-const { addRemoveAmountFromWallet } = require('../utils/wallet');
+const { addRemoveAmountFromWallet, processWalletAndTransaction } = require('../utils/wallet');
 const { addUserWallet } = require('./walletController');
-const { addTransaction } = require('../utils/transaction');
+const { addTransaction, SaleAndPurchaseTransaction } = require('../utils/transaction');
 const { generateInvoiceCode } = require('../utils/invoice');
+const { updateProductStock } = require('../utils/product');
 // const MyVehicle = require('../models/MyVehicle');
 // const Vendor = require('../models/Vendor');
 // const User = require('../models/User');
@@ -413,7 +414,6 @@ const updateBooking = async (req, res) => {
 
         // Find the booking by ID
         let booking = await Booking.findOne({ _id: id, vendor: vendor.id });
-
         if (!booking) {
             return res.status(404).json({
                 message: "Booking not found",
@@ -471,9 +471,18 @@ const updateBooking = async (req, res) => {
         // Update only the provided fields
         Object.assign(booking, updates);
         if (updates.status === "6") {
-            await addRemoveAmountFromWallet({ ownerType: "0", ownerId: booking.user, amount: booking.payableAmount, amountType: "0", vendor: vendor.id })
-            await addTransaction({ ownerType: "0", ownerId: booking.user, booking: booking, amountType: "0", vendor: vendor.id, transactionType: "0" })
-            booking.remainingAmount = booking.payableAmount
+            const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid, walletBalance } = await processWalletAndTransaction({ to: booking.user, vendor, subTotal: booking.payableAmount })
+            await addRemoveAmountFromWallet({ customer: booking.user, owner: vendor.id, amount: booking.payableAmount, ownerModel: "Vendor", customerModel: "User", amountType: "0" })
+            await SaleAndPurchaseTransaction({ customer: booking.user, owner: vendor.id, invoiceId: booking.invoice, transactionType: "3", subType: "0", billingType: isTottalyPaid ? "1" : "0", amountType: "4", paymentType: "2", amount: walletDebit, totalAmount: booking.payableAmount, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: isWalletDebit ? "1" : "0", isWithAddOnAmount: "0" })
+            await updateProductStock({ vendorId: vendor.id, productWithPrice: booking.productWithPrice, type: '0' })
+
+            if (walletBalance >= booking.payableAmount) {
+                booking.isPaid = true
+                booking.remainingAmount = 0
+            }
+            else if (walletBalance <= booking.payableAmount) {
+                booking.remainingAmount -= booking.payableAmount
+            }
         }
         // Save the updated booking
         await booking.save();

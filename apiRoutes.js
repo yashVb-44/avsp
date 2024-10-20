@@ -24,6 +24,8 @@ const serviceReminderRoutes = require('./routes/serviceReminderRoutes');
 const walletRoutes = require('./routes/walletRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const saleInvoiceRoutes = require('./routes/saleInvoiceRoutes');
+const purchaseInvoiceRoutes = require('./routes/purchaseInvoiceRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
 
 router.use("/user", userRoutes)
 router.use("/vendor", vendorRoutes)
@@ -46,5 +48,7 @@ router.use("/serviceReminder", serviceReminderRoutes)
 router.use("/wallet", walletRoutes)
 router.use("/transaction", transactionRoutes)
 router.use("/sale/invoice", saleInvoiceRoutes)
+router.use("/purchase/invoice", purchaseInvoiceRoutes)
+router.use("/expense", expenseRoutes)
 
 module.exports = router;

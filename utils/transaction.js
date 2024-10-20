@@ -70,7 +70,7 @@ const addTransaction = async ({
   }
 };
 
-const SaleTransaction = async ({ note,paymentType, addOnAmount, customer, owner, amount, amountType, billingType, transactionType, subType, invoice, invoiceId, ownerModel, customerModel, isWithAddOnAmount, isDebitFromWallet, remainingAmount, totalAmount }) => {
+const SaleAndPurchaseTransaction = async ({ note, paymentType, addOnAmount, customer, owner, amount, amountType, billingType, transactionType, subType, invoice, invoiceId, ownerModel, customerModel, isWithAddOnAmount, isDebitFromWallet, remainingAmount, totalAmount }) => {
   try {
     let newTransaction = await new Transaction({
       customer,
@@ -89,15 +89,16 @@ const SaleTransaction = async ({ note,paymentType, addOnAmount, customer, owner,
       isWithAddOnAmount,
       note,
       addOnAmount,
-      paymentType
+      paymentType,
+      invoiceId
     });
-    if (subType === "1") {
-      newTransaction.invoiceId = invoiceId
-    } else if (subType === "2") {
-      newTransaction.invoiceId = invoiceId
-    } else if (subType === "3") {
-      newTransaction.inovice = invoice
-    }
+    // if (subType === "1") {
+    //   newTransaction.invoiceId = invoiceId
+    // } else if (subType === "2") {
+    //   newTransaction.invoiceId = invoiceId
+    // } else if (subType === "3") {
+    //   newTransaction.inovice = invoice
+    // }
     await newTransaction.save()
     return newTransaction
 
@@ -105,6 +106,7 @@ const SaleTransaction = async ({ note,paymentType, addOnAmount, customer, owner,
     throw new Error(`Transaction handling failed: ${error.message}`);
   }
 };
+
 
 const addTransactionAtAddNewUser = async ({
   transactionType,
@@ -153,5 +155,5 @@ module.exports = {
   addTransaction,
   addTransactionAtAddNewUser,
   updateTransaction,
-  SaleTransaction
+  SaleAndPurchaseTransaction
 };
