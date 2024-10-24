@@ -1,6 +1,6 @@
 // routes/vendorRoutes.js
 const express = require('express');
-const { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, getVendorPendingPayments, addVendorWallet } = require('../controllers/walletController');
+const { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, getVendorPendingPayments, addVendorWallet, getWalletListByType, getWalletToPayAndToCollect } = require('../controllers/walletController');
 const { authenticateAndAuthorize } = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -13,5 +13,7 @@ router.get('/user/parties/list', authenticateAndAuthorize(['vendor']), getUserPa
 router.get('/vendor/parties/list', authenticateAndAuthorize(['vendor']), getVendorParties);
 router.get('/user/invoice/payment/pending/list/:userId', authenticateAndAuthorize(['vendor']), getUserPendingPayments);
 router.get('/vendor/invoice/payment/pending/list/:userId', authenticateAndAuthorize(['vendor']), getVendorPendingPayments);
+router.post('/parties', authenticateAndAuthorize(['vendor']), getWalletListByType);
+router.get('/to/payAndCollect', authenticateAndAuthorize(['vendor']), getWalletToPayAndToCollect);
 
 module.exports = router;

@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const walletSchema = mongoose.Schema({
     customer: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'customerModel',
+        refPath: 'customerModel',
     },
     customerModel: {
         type: String,

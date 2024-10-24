@@ -94,8 +94,8 @@
 
 ** table -> (sale invoice) 
 => type  ->             0= sale
-                        1= counter sale
-                        2 = sale return 
+                        1 = sale return 
+                        2 = counter sale
 
 ** table -> (purchase invoice) 
 => type  ->             0= purchase

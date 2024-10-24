@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const transactionSchema = mongoose.Schema({
     customer: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'customerModel',
+        refPath: 'customerModel',
     },
     customerModel: {
         type: String,
@@ -18,17 +18,8 @@ const transactionSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         refPath: 'ownerModel',
     },
-    inovice: [{
-        id: {
-            type: mongoose.Schema.Types.ObjectId,
-        },
-        amount: Number,
-        remainingAmount: Number,
-        transactionType: {
-            type: String,
-            enum: ["Booking", "SaleInvoice"]
-        } // for booking = booking
-    }],
+    // invoice: [],
+    transactions: [],
     bookingId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking',

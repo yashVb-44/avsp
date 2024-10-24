@@ -7,7 +7,7 @@ const saleInvoiceSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        default: "0"
+        default: "0" // 0 = add, 1 = return , 2 = counter
     },
     to: {
         type: mongoose.Schema.Types.ObjectId,

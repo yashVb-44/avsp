@@ -14,6 +14,9 @@ const additionalServiceRoutes = require('./routes/additionalServiceRoutes');
 const shopGalleryRoutes = require('./routes/shopGalleryRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const companyRoutes = require('./routes/companyRoutes');
+const gstRoutes = require('./routes/gstRoutes');
+const unitTypeRoutes = require('./routes/unitTypeRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 const myVehicleRoutes = require('./routes/myVehicleRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const subMechanicRoutes = require('./routes/subMechanicRoutes');
@@ -26,6 +29,8 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const saleInvoiceRoutes = require('./routes/saleInvoiceRoutes');
 const purchaseInvoiceRoutes = require('./routes/purchaseInvoiceRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
+const expenseCategoryRoutes = require('./routes/expenseCategoryRoutes');
+const settingRoutes = require('./routes/settingRoutes');
 
 router.use("/user", userRoutes)
 router.use("/vendor", vendorRoutes)
@@ -38,6 +43,9 @@ router.use("/additionalServiceDetails", additionalServiceRoutes)
 router.use("/shopGallery", shopGalleryRoutes)
 router.use("/address", addressRoutes)
 router.use("/company", companyRoutes)
+router.use("/category", categoryRoutes)
+router.use("/gst", gstRoutes)
+router.use("/unitType", unitTypeRoutes)
 router.use("/myVehicle", myVehicleRoutes)
 router.use("/booking", bookingRoutes)
 router.use("/subMechanic", subMechanicRoutes)
@@ -50,5 +58,7 @@ router.use("/transaction", transactionRoutes)
 router.use("/sale/invoice", saleInvoiceRoutes)
 router.use("/purchase/invoice", purchaseInvoiceRoutes)
 router.use("/expense", expenseRoutes)
+router.use("/expense/category", expenseCategoryRoutes)
+router.use("/settings", settingRoutes)
 
 module.exports = router;

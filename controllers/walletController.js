@@ -8,6 +8,7 @@ const SaleInvoice = require("../models/saleInvoice");
 const { addTransactionAtAddNewUser, addTransaction, updateTransaction, SaleAndPurchaseTransaction } = require("../utils/transaction");
 const { checkUserWalletExistForVendor } = require("../utils/wallet");
 const PurchaseInvoice = require("../models/purchaseInvoice");
+const { default: mongoose } = require("mongoose");
 
 // const addUserWallet = asyncHandler(async (req, res) => {
 //   try {
@@ -143,7 +144,7 @@ const addUserWallet = asyncHandler(async (req, res) => {
     if (type === "1") {
       await SaleAndPurchaseTransaction({ customer: userId, owner: vendor.id, transactionType: "0", subType: "4", amountType: "2", amount: addOnAmount, totalAmount: totalAmount, remainingAmount, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: "1", note, paymentType })
     } else {
-      await SaleAndPurchaseTransaction({ customer: userId, owner: vendor.id, invoice: transactions || [], transactionType: "0", subType: "3", amountType: "1", amount: walletAmount, totalAmount: totalAmount, addOnAmount: addOnAmount || 0, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: "1", isWithAddOnAmount: isWithAddOnAmount ? "1" : "0", note, paymentType })
+      await SaleAndPurchaseTransaction({ customer: userId, owner: vendor.id, invoice: transactions || [], transactionType: "0", subType: "3", amountType: "1", amount: walletAmount, totalAmount: totalAmount, addOnAmount: addOnAmount || 0, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: "1", isWithAddOnAmount: isWithAddOnAmount ? "1" : "0", note, paymentType, transactions })
     }
 
     // Save the wallet
@@ -228,9 +229,9 @@ const addVendorWallet = asyncHandler(async (req, res) => {
     }
 
     if (type === "0") {
-      await SaleAndPurchaseTransaction({ customer: vendorId, owner: vendor.id, transactionType: "1", subType: "3", amountType: "1", amount: addOnAmount, totalAmount: totalAmount, remainingAmount, ownerModel: "Vendor", customerModel: "TempVendor", note, paymentType })
+      await SaleAndPurchaseTransaction({ customer: vendorId, owner: vendor.id, transactionType: "1", subType: "3", amountType: "1", amount: addOnAmount, totalAmount: totalAmount, remainingAmount, ownerModel: "Vendor", customerModel: "TempVendor", note, paymentType, transactions })
     } else {
-      await SaleAndPurchaseTransaction({ customer: vendorId, owner: vendor.id, invoice: transactions || [], transactionType: "1", subType: "4", amountType: "2", amount: addOnAmount, totalAmount: totalAmount, addOnAmount: addOnAmount || 0, ownerModel: "Vendor", customerModel: "TempVendor", isWithAddOnAmount: "1", note, paymentType, remainingAmount })
+      await SaleAndPurchaseTransaction({ customer: vendorId, owner: vendor.id, invoice: transactions || [], transactionType: "1", subType: "4", amountType: "2", amount: addOnAmount, totalAmount: totalAmount, addOnAmount: addOnAmount || 0, ownerModel: "Vendor", customerModel: "TempVendor", isWithAddOnAmount: "1", note, paymentType, remainingAmount, transactions })
     }
 
     // Save the wallet
@@ -484,12 +485,62 @@ const getVendorParties = asyncHandler(async (req, res) => {
   }
 });
 
+// Controller to get the wallet lists based on type and subType from req.body
+const getWalletListByType = async (req, res) => {
+  try {
+    const { type, subType } = req.body;
+
+    let customerModel, amountCondition;
+
+    // Determine customerModel based on type (0 = sale, 1 = purchase)
+    if (type === "0") {
+      customerModel = 'User';
+    } else if (type === "1") {
+      customerModel = 'TempVendor';
+    } else {
+      return res.status(400).json({
+        message: 'Invalid type provided. Type must be 0 (Sale) or 1 (Purchase).',
+        type: "error",
+      }
+      );
+    }
+
+    // Determine amount condition based on subType (0 = less than 0, 1 = greater than 0)
+    if (subType === "0") {
+      amountCondition = { $lt: "0" };  // Amount less than 0
+    } else if (subType === "1") {
+      amountCondition = { $gt: "0" };  // Amount greater than 0
+    } else {
+      return res.status(400).json({
+        message: 'Invalid subType provided. SubType must be 0 (less than) or 1 (greater than).',
+        type: "error",
+      });
+    }
+
+    // Fetch wallets based on the ownerModel and amount condition
+    const walletList = await Wallet.find({
+      customerModel: customerModel,
+      amount: amountCondition
+    });
+
+    // Send response with the filtered wallet list
+    res.status(200).json({
+      message: "parties retrieved successfully",
+      type: "success",
+      walletList
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // get user pending payments 
 const getUserPendingPayments = asyncHandler(async (req, res) => {
   try {
     const userId = req.params.userId; // Assuming you're passing user ID via params
     const vendorId = req.user.id
-
+    const { type } = req.query
     // Find all unpaid bookings where the remaining amount is greater than 0
     const pendingBookings = await Booking.find({
       user: userId,
@@ -502,19 +553,19 @@ const getUserPendingPayments = asyncHandler(async (req, res) => {
       to: userId,
       toModel: 'User',
       isPaid: false,
-      from: vendorId
+      from: vendorId,
+      type
       // remainingAmount: { $gt: 0 }
     }).populate('invoice').lean();
-
     // Prepare the result combining both bookings and sale invoices
     const pendingPayments = [
-      ...pendingBookings.map(booking => ({
+      ...(type === "0" ? pendingBookings.map(booking => ({
         type: 'Booking',
         id: booking._id,
         remainingAmount: booking.remainingAmount,
         totalAmount: booking.payableAmount,
         details: booking,
-      })),
+      })) : []),
       ...pendingSaleInvoices.map(invoice => ({
         type: 'SaleInvoice',
         id: invoice._id,
@@ -544,20 +595,21 @@ const getVendorPendingPayments = asyncHandler(async (req, res) => {
   try {
     const userId = req.params.userId; // Assuming you're passing user ID via params
     const vendorId = req.user.id
-
+    const { type } = req.query
     // Find all unpaid purchase invoices where the remaining amount is greater than 0
-    const pendingInvoiceInvoices = await TempVendor.find({
+    const pendingInvoiceInvoices = await PurchaseInvoice.find({
       to: userId,
       toModel: 'TempVendor',
       isPaid: false,
-      from: vendorId
+      from: vendorId,
+      type
       // remainingAmount: { $gt: 0 }
     }).populate('invoice').lean();
 
     // Prepare the result of purchase invoices
     const pendingPayments = [
       ...pendingInvoiceInvoices.map(invoice => ({
-        type: 'TempVendor',
+        type: 'PurchaseInvoice',
         id: invoice._id,
         remainingAmount: invoice.remainingAmount,
         totalAmount: invoice.subTotal,
@@ -580,5 +632,43 @@ const getVendorPendingPayments = asyncHandler(async (req, res) => {
   }
 });
 
+const getWalletToPayAndToCollect = async (req, res) => {
+  try {
+    const vendorId = req.user.id;  // Assuming req.user contains the authenticated vendor's info
 
-module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, addVendorWallet, getVendorPendingPayments };
+    // Fetch wallets where amount is greater than 0 (to pay), filtered by owner (vendor)
+    const toPayResult = await Wallet.aggregate([
+      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $gt: 0 } } },
+      { $group: { _id: null, totalToPay: { $sum: "$amount" } } }
+    ]);
+
+    // Fetch wallets where amount is less than 0 (to collect), filtered by owner (vendor)
+    const toCollectResult = await Wallet.aggregate([
+      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $lt: 0 } } },
+      { $group: { _id: null, totalToCollect: { $sum: "$amount" } } }
+    ]);
+
+    // Extract the results from the aggregation queries
+    const totalToPay = toPayResult.length > 0 ? toPayResult[0].totalToPay : 0;
+    const totalToCollect = toCollectResult.length > 0 ? Math.abs(toCollectResult[0].totalToCollect) : 0;  // Make totalToCollect positive
+
+    // Send response with both amounts
+    res.status(200).json({
+      message: "Amounts calculated successfully",
+      type: "success",
+      totalToPay,
+      totalToCollect,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', type: "error" });
+  }
+};
+
+module.exports = {
+  getWalletToPayAndToCollect
+};
+
+
+
+module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, addVendorWallet, getVendorPendingPayments, getWalletListByType, getWalletToPayAndToCollect };

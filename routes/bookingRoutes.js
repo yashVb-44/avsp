@@ -2,10 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateAndAuthorize } = require('../middleware/authMiddleware');
-const { addBooking, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking } = require('../controllers/bookingController');
+const { addBooking, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking, addBookingByVendor } = require('../controllers/bookingController');
 
 
 router.post('/add', authenticateAndAuthorize(['user']), addBooking);
+router.post('/add/byVendor', authenticateAndAuthorize(['vendor']), addBookingByVendor);
 router.get('/', authenticateAndAuthorize(['admin', 'user', 'vendor']), getBookingList);
 router.get('/details/:bookingId', authenticateAndAuthorize(['admin', 'user', 'vendor']), getBookingDetails);
 router.post('/ofVendor', authenticateAndAuthorize(['vendor']), getBookingListOfVendor);

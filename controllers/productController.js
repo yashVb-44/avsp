@@ -56,7 +56,7 @@ const getProduct = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all products
-            product = await Product.find({ vendor: vendor.id });
+            product = await Product.find({ vendor: vendor.id }).populate("category").sort({ createdAt: -1 })
         }
 
         return res.status(200).json({

@@ -27,13 +27,13 @@ const addPurchaseInvoice = asyncHandler(async (req, res) => {
         });
         const { remainingAmount, walletDebit, isTottalyPaid, walletBalance } = await processWalletAndTransactionForVendor({ to, vendor, subTotal })
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "TempVendor", amountType: "1" })
-        await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "1", subType: "1", billingType: isTottalyPaid ? "1" : "0", amountType: "1", amount: walletDebit, totalAmount: subTotal, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "TempVendor" })
+        await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "1", subType: "1", billingType: isTottalyPaid ? "1" : "0", amountType: "1", amount: walletDebit, totalAmount: subTotal, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "TempVendor", invoice: productWithPrice })
         if (isTottalyPaid === "1") {
             newPurchaseInvoice.isPaid = true
             newPurchaseInvoice.remainingAmount = 0
         }
         else {
-            newPurchaseInvoice.remainingAmount -= remainingAmount
+            newPurchaseInvoice.remainingAmount = remainingAmount
         }
         await newPurchaseInvoice.save();
         await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '1' })
@@ -68,11 +68,12 @@ const returnPurchaseInvoice = asyncHandler(async (req, res) => {
             ...req.body,
             toModel: "TempVendor",
             from: vendor.id,
-            invoice: invoice._id
+            invoice: invoice._id,
+            type: "1"
         });
         await newPurchaseInvoice.save();
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "TempVendor", amountType: "0" })
-        await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "1", subType: "2", amountType: "2", totalAmount: subTotal, ownerModel: "Vendor", customerModel: "TempVendor" })
+        await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "1", subType: "2", amountType: "2", totalAmount: subTotal, ownerModel: "Vendor", customerModel: "TempVendor", invoice: productWithPrice })
         await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '0' })
         return res.status(201).json({
             message: 'Retrun Purchase invoice added successfully',
@@ -132,7 +133,7 @@ const getPurchaseInvoicePartyWise = asyncHandler(async (req, res) => {
 
         if (userId) {
             // Get all sale invoices for the logged-in vendor
-            purchaseInvoice = await PurchaseInvoice.find({ from: vendorId, to: userId }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
+            purchaseInvoice = await PurchaseInvoice.find({ from: vendorId, to: userId, type: "0" }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
 
             if (!purchaseInvoice) {
                 return res.status(404).json({

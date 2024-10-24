@@ -174,6 +174,10 @@ const bookingSchema = new Schema({
         type: String,
         default: "05-2024-1957/1"
     },
+    bookingType: {
+        type: String,
+        default: "0" // 0 = normal , 1 = job card, 2 = emergency
+    },
     addNewServiceDate: String,
     acceptedDate: String,
     collectedByGarageDate: String,

@@ -9,7 +9,7 @@ const removeUnwantedImages = (imagePaths) => {
                 if (err) console.error(`Failed to delete image: ${imagePath}`, err);
             });
         } catch (error) {
-
+            console.log(error)
         }
     });
 };

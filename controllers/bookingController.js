@@ -41,7 +41,7 @@ const addBooking = async (req, res) => {
             bookingID: generateBookingID(), // You can implement a function to generate unique booking IDs
             serviceType,
             garage,
-            status: "1", // change this field
+            status: "0", // change this field
             addNewServiceDate,
             acceptedDate,
             collectedByGarageDate,
@@ -110,6 +110,120 @@ const addBooking = async (req, res) => {
         return res.status(500).json({
             message: "Internal server error",
             error: error.message
+        });
+    }
+};
+
+const addBookingByVendor = async (req, res) => {
+    try {
+        const vendor = req.user.id;
+        const {
+            userId,
+            myVehicle,
+            services,
+            scheduleDate,
+            scheduleTime,
+            pickupAddress,
+            dropAddress,
+            pickupTimeSlot,
+            dropTimeSlot,
+            serviceType,
+            garage,
+            addNewServiceDate,
+            cancelledByUserDate,
+            cancelledByVendorDate,
+            acceptedDate,
+            declinedDate,
+            collectedByGarageDate,
+            pendingDate,
+            workProgressDate,
+            completedDate,
+            recivedByUserDate,
+            otherService,
+        } = req.body;
+
+        // Validate serviceType
+        const validServiceTypes = ["1", "2", "3", "4"];
+        if (!validServiceTypes.includes(serviceType)) {
+            return res.status(400).json({ message: "Invalid service type" });
+        }
+
+        const invoice = await generateInvoiceCode({
+            type: "0",
+            fromVendorId: vendor,
+            toId: userId,
+            toModel: "User",
+        });
+
+        // Initialize booking data
+        let bookingData = {
+            ...req.body,
+            invoice: invoice?._id,
+            user: userId,
+            vendor,
+            bookingID: generateBookingID(), // You can implement a function to generate unique booking IDs
+            type: "2",
+        };
+
+        // Handle address based on serviceType
+        if (serviceType === "2") {
+            // Pickup only
+            bookingData.pickupAddress = pickupAddress;
+            bookingData.pickupTimeSlot = pickupTimeSlot;
+        } else if (serviceType === "3") {
+            // Drop only
+            bookingData.dropAddress = dropAddress;
+            bookingData.dropTimeSlot = dropTimeSlot;
+        } else if (serviceType === "4") {
+            // Both pickup and drop
+            bookingData.pickupAddress = pickupAddress;
+            bookingData.dropAddress = dropAddress;
+            bookingData.pickupTimeSlot = pickupTimeSlot;
+            bookingData.dropTimeSlot = dropTimeSlot;
+        }
+
+        // Map services and fetch corresponding prices and names
+        const serviceWithPrices = await Promise.all(
+            services.map(async (serviceId) => {
+                const servicePrice = await ServiceWithPrice.findOne({
+                    shopService: serviceId,
+                    vendor: vendor,
+                }).populate("shopService");
+
+                if (servicePrice) {
+                    return {
+                        serviceId: servicePrice.shopService._id,
+                        serviceName: servicePrice.shopService.name,
+                        price: servicePrice.price,
+                        labourCharges: 0,
+                    };
+                } else {
+                    // If service price not found, fallback to 0 price or handle this case as needed
+                    const serviceDetails = await ShopService.findById(serviceId);
+                    return {
+                        serviceId: serviceDetails._id,
+                        serviceName: serviceDetails.name,
+                        price: 0,
+                        labourCharges: 0,
+                    };
+                }
+            })
+        );
+
+        bookingData.serviceWithPrice = serviceWithPrices;
+        // Create booking
+        const newBooking = new Booking(bookingData);
+        await newBooking.save();
+
+        return res.status(201).json({
+            message: "Booking created successfully",
+            booking: newBooking,
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
@@ -544,4 +658,4 @@ const generateBookingID = () => {
     return `BOOK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 };
 
-module.exports = { addBooking, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking };
+module.exports = { addBooking, addBookingByVendor, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking };

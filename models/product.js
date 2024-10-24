@@ -2,6 +2,10 @@
 const mongoose = require('mongoose');
 
 const productSchema = mongoose.Schema({
+    category: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+    },
     name: {
         type: String,
     },
@@ -31,7 +35,6 @@ const productSchema = mongoose.Schema({
     },
     unitType: {
         type: String,
-        default: "0"
     },
     taxIncluded: {
         type: Boolean,
@@ -42,7 +45,6 @@ const productSchema = mongoose.Schema({
     },
     gst: {
         type: Number,
-        default: 0
     },
     date: {
         type: String

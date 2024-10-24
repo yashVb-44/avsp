@@ -54,6 +54,57 @@ const addVehicle = [
     }),
 ];
 
+// Add Vehicle by vendor
+const addVehicleByVendor = [
+    upload.single("myVehicleImage"),
+    asyncHandler(async (req, res) => {
+        try {
+            const vendorId = req.user.id;
+            const { number, userId } = req.body;
+
+            // Check if a vehicle with the same number already exists for the user
+            const existingVehicle = await MyVehicle.findOne({ number, userId });
+            if (existingVehicle) {
+                removeUnwantedImages([req.file.path]);
+                return res.status(400).json({
+                    message: "Vehicle with this number already exists",
+                    type: "error",
+                });
+            }
+
+            // Prepare vehicle data
+            const vehicleData = {
+                ...req.body,
+                userId,
+                vendorId,
+            };
+
+            // Handle image upload
+            if (req.file) {
+                vehicleData.image = req.file.path;
+            }
+
+            // Create and save the vehicle
+            const vehicle = await MyVehicle.create(vehicleData);
+
+            return res.status(201).json({
+                message: "Vehicle added successfully",
+                type: "success",
+                vehicle,
+            });
+        } catch (error) {
+            if (req.file) {
+                removeUnwantedImages([req.file.path]);
+            }
+            return res.status(500).json({
+                message: "Failed to add vehicle",
+                error: error.message,
+                type: "error",
+            });
+        }
+    }),
+];
+
 // Get Vehicle(s)
 const getVehicles = asyncHandler(async (req, res) => {
     try {
@@ -253,4 +304,5 @@ module.exports = {
     getVehicles,
     updateVehicle,
     deleteVehicle,
+    addVehicleByVendor
 };
