@@ -152,6 +152,14 @@ const bookingSchema = new Schema({
         type: Number,
         default: 0
     },
+    pickUpCharge: {
+        type: Number,
+        default: 0
+    },
+    dropOffCharge: {
+        type: Number,
+        default: 0
+    },
     estimatedCost: {
         type: Number,
         default: 0

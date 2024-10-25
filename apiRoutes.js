@@ -31,6 +31,7 @@ const purchaseInvoiceRoutes = require('./routes/purchaseInvoiceRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const expenseCategoryRoutes = require('./routes/expenseCategoryRoutes');
 const settingRoutes = require('./routes/settingRoutes');
+const invoiceRoutes = require('./routes/invoiceRoutes');
 
 router.use("/user", userRoutes)
 router.use("/vendor", vendorRoutes)
@@ -60,5 +61,6 @@ router.use("/purchase/invoice", purchaseInvoiceRoutes)
 router.use("/expense", expenseRoutes)
 router.use("/expense/category", expenseCategoryRoutes)
 router.use("/settings", settingRoutes)
+router.use("/invoice", invoiceRoutes)
 
 module.exports = router;

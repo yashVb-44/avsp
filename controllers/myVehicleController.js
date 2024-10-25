@@ -151,6 +151,43 @@ const getVehicles = asyncHandler(async (req, res) => {
     }
 });
 
+// Get Vehicle(s)
+const getUserVehiclesByVendor = asyncHandler(async (req, res) => {
+    try {
+        const { id, userId } = req.body;
+        let vehicles;
+
+        if (id) {
+            vehicles = await MyVehicle.findById(id).populate('userId');
+            if (!vehicles) {
+                return res.status(404).json({
+                    message: 'Vehicle not found',
+                    type: 'error',
+                });
+            }
+
+            vehicles = generateImageUrls(vehicles.toObject(), req); // Convert to plain object and generate URLs
+        } else {
+            if (req.user.role === 'vendor') {
+                vehicles = await MyVehicle.find({ userId }).populate('userId');
+            }
+
+            vehicles = vehicles.map((vehicle) => generateImageUrls(vehicle.toObject(), req)); // Convert to plain object and generate URLs
+        }
+
+        return res.status(200).json({
+            vehicles,
+            type: 'success',
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to retrieve vehicles',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
 // Update Vehicle
 const updateVehicle = [
     upload.single('myVehicleImage'),
@@ -304,5 +341,6 @@ module.exports = {
     getVehicles,
     updateVehicle,
     deleteVehicle,
-    addVehicleByVendor
+    addVehicleByVendor,
+    getUserVehiclesByVendor
 };
