@@ -212,8 +212,10 @@ const addBookingByVendor = async (req, res) => {
 
         bookingData.serviceWithPrice = serviceWithPrices;
         // Create booking
-        const newBooking = new Booking(bookingData);
+        let newBooking = new Booking(bookingData);
         await newBooking.save();
+
+        newBooking = await newBooking.populate('myVehicle')
 
         return res.status(201).json({
             message: "Booking created successfully",
