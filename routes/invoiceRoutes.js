@@ -2,8 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateAndAuthorize } = require('../middleware/authMiddleware');
-const { generateInvoiceHTML } = require('../controllers/invoiceController');
+const { generateInvoiceHTML, getPartyInvoicesByVendor, getTransactionsByInvoice } = require('../controllers/invoiceController');
 
-router.get('/html/:id', generateInvoiceHTML);
+router.get('/html/:id', authenticateAndAuthorize(['vendor', 'admin']), generateInvoiceHTML);
+router.get('/partyWise/byVendor/:partyId', authenticateAndAuthorize(['vendor', 'admin']), getPartyInvoicesByVendor);
+router.get('/transactions/byVendor/:invoiceId', authenticateAndAuthorize(['vendor', 'admin']), getTransactionsByInvoice);
 
 module.exports = router;

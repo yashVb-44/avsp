@@ -15,7 +15,7 @@ const addVehicle = [
             // Check if a vehicle with the same number already exists for the user
             const existingVehicle = await MyVehicle.findOne({ number, userId });
             if (existingVehicle) {
-                removeUnwantedImages([req.file.path]);
+                req.file && removeUnwantedImages([req.file.path]);
                 return res.status(400).json({
                     message: 'Vehicle with this number already exists',
                     type: 'error',
@@ -65,7 +65,7 @@ const addVehicleByVendor = [
             // Check if a vehicle with the same number already exists for the user
             const existingVehicle = await MyVehicle.findOne({ number, userId });
             if (existingVehicle) {
-                removeUnwantedImages([req.file.path]);
+                req.file && removeUnwantedImages([req.file?.path]);
                 return res.status(400).json({
                     message: "Vehicle with this number already exists",
                     type: "error",
@@ -96,6 +96,7 @@ const addVehicleByVendor = [
             if (req.file) {
                 removeUnwantedImages([req.file.path]);
             }
+            console.log(error)
             return res.status(500).json({
                 message: "Failed to add vehicle",
                 error: error.message,

@@ -488,6 +488,7 @@ const getVendorParties = asyncHandler(async (req, res) => {
 // Controller to get the wallet lists based on type and subType from req.body
 const getWalletListByType = async (req, res) => {
   try {
+    const vendorId = req.user.id
     const { type, subType } = req.body;
 
     let customerModel, amountCondition;
@@ -520,7 +521,8 @@ const getWalletListByType = async (req, res) => {
     // Fetch wallets based on the ownerModel and amount condition
     const walletList = await Wallet.find({
       customerModel: customerModel,
-      amount: amountCondition
+      amount: amountCondition,
+      owner: vendorId
     });
 
     // Send response with the filtered wallet list
@@ -636,21 +638,21 @@ const getWalletToPayAndToCollect = async (req, res) => {
   try {
     const vendorId = req.user.id;  // Assuming req.user contains the authenticated vendor's info
 
-    // Fetch wallets where amount is greater than 0 (to pay), filtered by owner (vendor)
+    // Fetch wallets where amount is less than 0 (to pay), filtered by owner (vendor)
     const toPayResult = await Wallet.aggregate([
-      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $gt: 0 } } },
+      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $lt: 0 } } },
       { $group: { _id: null, totalToPay: { $sum: "$amount" } } }
     ]);
 
-    // Fetch wallets where amount is less than 0 (to collect), filtered by owner (vendor)
+    // Fetch wallets where amount is greater than 0 (to collect), filtered by owner (vendor)
     const toCollectResult = await Wallet.aggregate([
-      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $lt: 0 } } },
+      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $gt: 0 } } },
       { $group: { _id: null, totalToCollect: { $sum: "$amount" } } }
     ]);
 
     // Extract the results from the aggregation queries
-    const totalToPay = toPayResult.length > 0 ? toPayResult[0].totalToPay : 0;
-    const totalToCollect = toCollectResult.length > 0 ? Math.abs(toCollectResult[0].totalToCollect) : 0;  // Make totalToCollect positive
+    const totalToPay = toPayResult.length > 0 ? Math.abs(toPayResult[0].totalToPay) : 0;  // Make totalToPay positive
+    const totalToCollect = toCollectResult.length > 0 ? toCollectResult[0].totalToCollect : 0;
 
     // Send response with both amounts
     res.status(200).json({
@@ -664,11 +666,5 @@ const getWalletToPayAndToCollect = async (req, res) => {
     res.status(500).json({ message: 'Server error', type: "error" });
   }
 };
-
-module.exports = {
-  getWalletToPayAndToCollect
-};
-
-
 
 module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, addVendorWallet, getVendorPendingPayments, getWalletListByType, getWalletToPayAndToCollect };

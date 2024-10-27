@@ -218,6 +218,7 @@ const addBookingByVendor = async (req, res) => {
         return res.status(201).json({
             message: "Booking created successfully",
             booking: newBooking,
+
         });
     } catch (error) {
         console.log(error);
