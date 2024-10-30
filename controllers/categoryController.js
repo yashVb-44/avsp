@@ -4,11 +4,14 @@ const Category = require('../models/category');
 // Add Category
 const addCategory = asyncHandler(async (req, res) => {
     try {
+        const { id } = req.user
+        const { name } = req.body
         const categoryData = {
             ...req.body,
+            vendor: id
         };
 
-        const existingCategory = await Category.findOne(req.body)
+        const existingCategory = await Category.findOne({ name, vendor: id })
 
         if (existingCategory) {
             return res.status(400).json({
@@ -43,7 +46,7 @@ const getCategory = asyncHandler(async (req, res) => {
 
         if (id) {
             // Get a specific category by ID
-            category = await Category.findOne({ _id: id });
+            category = await Category.findOne({ _id: id, vendor: userId });
 
             if (!category) {
                 return res.status(404).json({
@@ -53,7 +56,7 @@ const getCategory = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all categoryes for the user
-            role === "admin" ? category = await Category.find() : category = await Category.find({ isActive: true });
+            role === "admin" ? category = await Category.find() : category = await Category.find({ isActive: true, vendor: userId });
         }
 
         return res.status(200).json({
@@ -72,8 +75,9 @@ const getCategory = asyncHandler(async (req, res) => {
 // Update Category
 const updateCategory = asyncHandler(async (req, res) => {
     try {
+        const { id: userId } = req.user
         const { id } = req.params;
-        const category = await Category.findOne({ _id: id });
+        const category = await Category.findOne({ _id: id, vendor: userId });
 
         if (!category) {
             return res.status(404).json({
@@ -104,11 +108,12 @@ const updateCategory = asyncHandler(async (req, res) => {
 // Delete Category (by ID or all)
 const deleteCategory = asyncHandler(async (req, res) => {
     try {
+        const { id: userId, role } = req.user
         const { id } = req.params;
 
         if (id) {
             // Delete a specific category by ID
-            const category = await Category.findById(id);
+            const category = role === "admin" ? await Category.findById(id) : await Category.findOne({ _id: id, vendor: userId })
 
             if (!category) {
                 return res.status(404).json({
@@ -117,7 +122,9 @@ const deleteCategory = asyncHandler(async (req, res) => {
                 });
             }
 
-            await Category.deleteOne({ _id: id });
+            category.isActive = false
+
+            await category.save()
 
             return res.status(200).json({
                 message: 'Category deleted successfully',
@@ -125,7 +132,7 @@ const deleteCategory = asyncHandler(async (req, res) => {
             });
         } else {
             // Delete all categories
-            await Category.deleteMany();
+            //  await Category.deleteMany();
 
             return res.status(200).json({
                 message: 'All categories deleted successfully',

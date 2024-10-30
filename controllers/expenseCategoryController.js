@@ -4,11 +4,15 @@ const ExpenseCategory = require('../models/expenseCategory');
 // Add ExpenseCategory
 const addExpenseCategory = asyncHandler(async (req, res) => {
     try {
+        const { id } = req.user
+        const { name } = req.body
+
         const expenseExpenseCategoryData = {
             ...req.body,
+            vendor: id
         };
 
-        const existingExpenseCategory = await ExpenseCategory.findOne(req.body)
+        const existingExpenseCategory = await ExpenseCategory.findOne({ name, vendor: id })
 
         if (existingExpenseCategory) {
             return res.status(400).json({
@@ -43,7 +47,7 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
 
         if (id) {
             // Get a specific expenseExpenseCategory by ID
-            expenseExpenseCategory = await ExpenseCategory.findOne({ _id: id });
+            expenseExpenseCategory = await ExpenseCategory.findOne({ _id: id, vendor: userId });
 
             if (!expenseExpenseCategory) {
                 return res.status(404).json({
@@ -53,7 +57,7 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all expenseExpenseCategoryes for the user
-            role === "admin" ? expenseExpenseCategory = await ExpenseCategory.find() : expenseExpenseCategory = await ExpenseCategory.find({ isActive: true });
+            role === "admin" ? expenseExpenseCategory = await ExpenseCategory.find() : expenseExpenseCategory = await ExpenseCategory.find({ isActive: true, vendor: userId });
         }
 
         return res.status(200).json({
@@ -72,8 +76,9 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
 // Update ExpenseCategory
 const updateExpenseCategory = asyncHandler(async (req, res) => {
     try {
+        const { id: userId } = req.user
         const { id } = req.params;
-        const expenseExpenseCategory = await ExpenseCategory.findOne({ _id: id });
+        const expenseExpenseCategory = await ExpenseCategory.findOne({ _id: id, vendor: userId });
 
         if (!expenseExpenseCategory) {
             return res.status(404).json({
@@ -104,11 +109,12 @@ const updateExpenseCategory = asyncHandler(async (req, res) => {
 // Delete ExpenseCategory (by ID or all)
 const deleteExpenseCategory = asyncHandler(async (req, res) => {
     try {
+        const { id: userId, role } = req.user
         const { id } = req.params;
 
         if (id) {
             // Delete a specific expenseExpenseCategory by ID
-            const expenseExpenseCategory = await ExpenseCategory.findById(id);
+            const expenseExpenseCategory = role === 'admin' ? await ExpenseCategory.findById(id) : await ExpenseCategory.findOne({ _id: id, vendor: userId })
 
             if (!expenseExpenseCategory) {
                 return res.status(404).json({
@@ -117,7 +123,9 @@ const deleteExpenseCategory = asyncHandler(async (req, res) => {
                 });
             }
 
-            await ExpenseCategory.deleteOne({ _id: id });
+            expenseExpenseCategory.isActive = false
+
+            await expenseExpenseCategory.save()
 
             return res.status(200).json({
                 message: 'ExpenseCategory deleted successfully',
@@ -125,7 +133,7 @@ const deleteExpenseCategory = asyncHandler(async (req, res) => {
             });
         } else {
             // Delete all categories
-            await ExpenseCategory.deleteMany();
+            // await ExpenseCategory.deleteMany();
 
             return res.status(200).json({
                 message: 'All categories deleted successfully',

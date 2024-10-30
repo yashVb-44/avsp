@@ -24,6 +24,8 @@ const storage = multer.diskStorage({
             folder += 'afterServiceImages/'
         } else if (file.fieldname === 'dentImage') {
             folder += 'dentImages/'
+        } else if (file.fieldname === 'bannerImage') {
+            folder += 'bannerImages/'
         }
 
         cb(null, folder); // Set the destination folder for the specific image category

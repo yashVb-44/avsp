@@ -8,6 +8,10 @@ const expenseCategorySchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    vendor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Vendor',
+    }
 }, {
     timestamps: true,
 });

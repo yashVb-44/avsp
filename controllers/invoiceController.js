@@ -260,7 +260,8 @@ const getPartyInvoicesByVendor = async (req, res) => {
     const invoices = await Invoice.find({ to: partyId })
       .populate('from') // Populating 'from' (Vendor)
       .populate('to') // Populating 'to' (User or Vendor)
-      .lean(); // Using lean for better performance if you don't need to modify documents
+      .lean() // Using lean for better performance if you don't need to modify documents
+      .sort({ createdAt: -1 })
 
     if (invoices.length === 0) {
       return res.status(404).json({
@@ -281,6 +282,7 @@ const getPartyInvoicesByVendor = async (req, res) => {
         const saleInvoiceDetails = await SaleInvoice.findOne({ invoice: invoice._id }).lean();
         saleInvoices.push({
           ...invoice,
+          invoiceId: saleInvoiceDetails._id,
           saleInvoiceDetails
         });
       }
@@ -327,11 +329,10 @@ const getPartyInvoicesByVendor = async (req, res) => {
 const getTransactionsByInvoice = async (req, res) => {
   try {
     const { invoiceId } = req.params;  // Assuming invoiceId is passed in the params
-
     const transactions = await Transaction.find({
       $or: [
-        { invoiceId }, // Transactions where 'invoiceId' is a direct match
-        { 'transactions.id': invoiceId } // Transactions where 'transactions' array contains an invoice with the given id
+        { invoiceId: invoiceId }, // Transactions where 'invoiceId' is a direct match
+        { 'transactions.invoiceId': invoiceId } // Transactions where 'transactions' array contains an invoice with the given id
       ]
     })
       .populate('customer') // Populating 'customer' (User, Vendor, or TempVendor)

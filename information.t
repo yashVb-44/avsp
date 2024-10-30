@@ -100,3 +100,9 @@
 ** table -> (purchase invoice) 
 => type  ->             0= purchase
                         1= purchase return 
+
+** table -> (banner) 
+
+=> type -> 0 = user
+            1 = vendor
+            2 = both

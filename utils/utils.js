@@ -6,7 +6,7 @@ const generateImageUrls = (document, req) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     // Process only the fields that are image URLs
-    const imageFields = ['ownerImage', 'vehicleRepairImage', 'insideImage', 'outsideImage', 'image', "dentImage", "afterServiceImage", "beforeServiceImage"];
+    const imageFields = ['ownerImage', 'vehicleRepairImage', 'insideImage', 'outsideImage', 'image', "dentImage", "afterServiceImage", "beforeServiceImage", "bannerImage"];
     imageFields.forEach((field) => {
         if (document[field]) {
             document[field] = `${baseUrl}/${document[field].replace(/\\/g, '/')}`; // Handle both Unix and Windows paths

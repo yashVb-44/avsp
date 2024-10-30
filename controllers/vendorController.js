@@ -330,8 +330,7 @@ const updateVendorProfile = [
 
 const filterVendors = asyncHandler(async (req, res) => {
     try {
-        const { radius, mechType, serviceTypes, lat, lng, dateTime, page = 1, limit = 10 } = req.body;
-
+        let { radius, mechType, serviceTypes, lat, lng, dateTime, page = 1, limit = 10 } = req.body;
         // Ensure necessary parameters are provided
         if (!radius || !mechType || !lat || !lng || !dateTime) {
             return res.status(400).json({
@@ -348,6 +347,7 @@ const filterVendors = asyncHandler(async (req, res) => {
 
         // Parse dateTime from the body
         const requestedDateTime = new Date(dateTime);
+        // const requestedDateTime = new Date();
         const requestedDay = requestedDateTime.getDay();
         const requestedTime = requestedDateTime.getHours() + (requestedDateTime.getMinutes() / 60);
 

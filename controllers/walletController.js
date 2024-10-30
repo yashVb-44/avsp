@@ -640,19 +640,22 @@ const getWalletToPayAndToCollect = async (req, res) => {
 
     // Fetch wallets where amount is less than 0 (to pay), filtered by owner (vendor)
     const toPayResult = await Wallet.aggregate([
-      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $lt: 0 } } },
+      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $gt: 0 } } },
       { $group: { _id: null, totalToPay: { $sum: "$amount" } } }
     ]);
 
     // Fetch wallets where amount is greater than 0 (to collect), filtered by owner (vendor)
     const toCollectResult = await Wallet.aggregate([
-      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $gt: 0 } } },
+      { $match: { owner: new mongoose.Types.ObjectId(vendorId), amount: { $lt: 0 } } },
       { $group: { _id: null, totalToCollect: { $sum: "$amount" } } }
     ]);
 
     // Extract the results from the aggregation queries
-    const totalToPay = toPayResult.length > 0 ? Math.abs(toPayResult[0].totalToPay) : 0;  // Make totalToPay positive
-    const totalToCollect = toCollectResult.length > 0 ? toCollectResult[0].totalToCollect : 0;
+    // const totalToPay = toPayResult.length > 0 ? Math.abs(toPayResult[0].totalToPay) : 0;  // Make totalToPay positive
+    // const totalToCollect = toCollectResult.length > 0 ? toCollectResult[0].totalToCollect : 0;
+
+    const totalToPay = toPayResult.length > 0 ? toPayResult[0].totalToPay : 0;
+    const totalToCollect = toCollectResult.length > 0 ? Math.abs(toCollectResult[0].totalToCollect) : 0;
 
     // Send response with both amounts
     res.status(200).json({

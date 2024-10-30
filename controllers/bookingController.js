@@ -426,6 +426,7 @@ const declineBooking = async (req, res) => {
         // Validate cancellation reason
         if (!declineReason || declineReason.trim() === "") {
             return res.status(400).json({ type: "error", message: "Decline reason is required" });
+
         }
 
         // Find the booking that belongs to the user
