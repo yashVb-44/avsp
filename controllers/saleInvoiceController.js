@@ -33,7 +33,7 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
             newSaleInvoice.remainingAmount = 0
         }
         else if (walletBalance <= subTotal) {
-            newSaleInvoice.remainingAmount -= subTotal
+            newSaleInvoice.remainingAmount -= walletDebit
         }
         await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '0' })
         await newSaleInvoice.save();

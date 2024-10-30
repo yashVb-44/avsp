@@ -576,7 +576,6 @@ const getUserPendingPayments = asyncHandler(async (req, res) => {
         details: invoice,
       })),
     ];
-
     return res.status(200).json({
       message: "Pending payments retrieved successfully",
       type: "success",
