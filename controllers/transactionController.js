@@ -71,4 +71,44 @@ const getAllTransactionWithFilter = expressAsyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { getVendorAllTransaction, getAllTransactionWithFilter }
+const getPartyTransactionsByVendor = expressAsyncHandler(async (req, res) => {
+    try {
+        const { id } = req.user
+        const { partyId } = req.params; // Party ID from request parameters
+        const { type } = req.query;     // Type from query parameters (e.g., "credit" for payment in or "debit" for payment out)
+
+        // Define filters based on type
+        let typeFilter = {};
+        if (type === '1') {
+            typeFilter.subType = "3"; // Payment in (credit - payment in)
+        } else if (type === '2') {
+            typeFilter.subType = "4"; // Payment out (debit - payment out)
+        }
+
+        // Fetch transactions for the particular party with the specified filters
+        const transactions = await Transaction.find({
+            owner: id,
+            customer: partyId,          // Match the specified party's ID as the owner
+            ...typeFilter              // Apply the filter for subType
+        })
+            .populate("invoiceId")
+            .populate("customer")
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            message: "Transactions retrieved successfully",
+            type: "success",
+            transactions,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to retrieve transactions",
+            error: error.message,
+            type: "error",
+        });
+    }
+});
+
+
+module.exports = { getVendorAllTransaction, getAllTransactionWithFilter, getPartyTransactionsByVendor }

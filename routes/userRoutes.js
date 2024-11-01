@@ -12,5 +12,6 @@ router.post('/add/byVendor', addUserByVendor);
 router.get('/profile/:id?', authenticateAndAuthorize(['user', 'admin']), getUserProfile);
 router.get('/list/byMobileNo', authenticateAndAuthorize(['vendor', 'admin']), getUserListWithMobileNo);
 router.put('/profile/:id?', authenticateAndAuthorize(['user', 'admin']), updateUserProfile);
+router.get('/details/:id', authenticateAndAuthorize(['user', 'admin']), updateUserProfile);
 
 module.exports = router;

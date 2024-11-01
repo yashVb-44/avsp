@@ -9,6 +9,7 @@ const { addTransactionAtAddNewUser, addTransaction, updateTransaction, SaleAndPu
 const { checkUserWalletExistForVendor } = require("../utils/wallet");
 const PurchaseInvoice = require("../models/purchaseInvoice");
 const { default: mongoose } = require("mongoose");
+const expressAsyncHandler = require("express-async-handler");
 
 // const addUserWallet = asyncHandler(async (req, res) => {
 //   try {
@@ -373,23 +374,73 @@ const addNewVendorParty = asyncHandler(async (req, res) => {
   }
 });
 
+// const getAllParties = asyncHandler(async (req, res) => {
+//   try {
+//     const vendor = req.user;
+//     const searchQuery = req.query.search || ''; // Fetch the search query from request
+
+//     const wallets = await Wallet.find({ owner: vendor.id }).sort({ createdAt: -1 });
+
+//     // Find all wallet entries and populate customer information
+//     const parties = await Promise.all(wallets.map(async (wallet) => {
+//       let populatedWallet = wallet.toObject();
+//       if (wallet.customerModel === 'User') {
+//         populatedWallet.customer = await User.findOne({
+//           _id: wallet.customer,
+//           name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
+//         }).lean();
+//       } else if (wallet.customerModel === 'TempVendor') {
+//         populatedWallet.customer = await TempVendor.findOne({
+//           _id: wallet.customer,
+//           name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
+//         }).lean();
+//       }
+//       return populatedWallet;
+//     }));
+
+//     // Filter out wallets where the customer could not be found (null)
+//     const filteredParties = parties.filter(party => party.customer);
+
+//     return res.status(200).json({
+//       message: "All parties retrieved successfully",
+//       type: "success",
+//       parties: filteredParties,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       message: "Failed to retrieve parties",
+//       error: error.message,
+//       type: "error",
+//     });
+//   }
+// });
+
 const getAllParties = asyncHandler(async (req, res) => {
   try {
     const vendor = req.user;
-    const searchQuery = req.query.search || ''; // Fetch the search query from request
+    const searchQuery = req.query.search || '';
+    const type = req.query.type || '0'; // Default to '0' for all parties if type is not provided
 
     const wallets = await Wallet.find({ owner: vendor.id }).sort({ createdAt: -1 });
 
-    // Find all wallet entries and populate customer information
-    const parties = await Promise.all(wallets.map(async (wallet) => {
+    // Filter wallets based on type: 0 = all, 1 = only users, 2 = only vendors
+    const filteredWallets = wallets.filter(wallet => {
+      if (type === '1') return wallet.customerModel === 'User';
+      if (type === '2') return wallet.customerModel === 'TempVendor';
+      return true; // '0' means include all parties
+    });
+
+    // Populate customer information based on customerModel
+    const parties = await Promise.all(filteredWallets.map(async (wallet) => {
       let populatedWallet = wallet.toObject();
       if (wallet.customerModel === 'User') {
         populatedWallet.customer = await User.findOne({
           _id: wallet.customer,
           name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
         }).lean();
-      } else if (wallet.customerModel === 'Vendor') {
-        populatedWallet.customer = await Vendor.findOne({
+      } else if (wallet.customerModel === 'TempVendor') {
+        populatedWallet.customer = await TempVendor.findOne({
           _id: wallet.customer,
           name: { $regex: searchQuery, $options: 'i' } // Search by name (case-insensitive)
         }).lean();
@@ -669,4 +720,55 @@ const getWalletToPayAndToCollect = async (req, res) => {
   }
 };
 
-module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, addVendorWallet, getVendorPendingPayments, getWalletListByType, getWalletToPayAndToCollect };
+const getPartyDetails = asyncHandler(async (req, res) => {
+  try {
+    const vendor = req.user; // Vendor is assumed to be authenticated and available in req.user
+    const customerId = req.params.customerId; // Customer ID to fetch
+
+    // Find the wallet entry based on vendor (owner) and customer ID
+    const wallet = await Wallet.findOne({ owner: vendor.id, customer: customerId });
+    if (!wallet) {
+      return res.status(404).json({
+        message: "Wallet for this customer not found under the vendor",
+        type: "error",
+      });
+    }
+
+    let customerDetails;
+
+    // Fetch the relevant customer details based on customerModel in wallet
+    if (wallet.customerModel === 'User') {
+      customerDetails = await User.findById(wallet.customer).select('-password -otp -otpExpiresAt'); // Exclude sensitive fields
+    } else if (wallet.customerModel === 'TempVendor') {
+      customerDetails = await TempVendor.findById(wallet.customer);
+    }
+
+    if (!customerDetails) {
+      return res.status(404).json({
+        message: "Customer details not found",
+        type: "error",
+      });
+    }
+
+    // Prepare response with wallet and customer details
+    const partyDetails = {
+      wallet: wallet.toObject(),
+      customer: customerDetails.toObject()
+    };
+
+    return res.status(200).json({
+      message: "Party details retrieved successfully",
+      type: "success",
+      partyDetails,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Failed to retrieve party details",
+      error: error.message,
+      type: "error",
+    });
+  }
+});
+
+module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, addVendorWallet, getVendorPendingPayments, getWalletListByType, getWalletToPayAndToCollect, getPartyDetails };
