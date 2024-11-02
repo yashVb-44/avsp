@@ -11,6 +11,7 @@ const { addUserWallet } = require('./walletController');
 const { addTransaction, SaleAndPurchaseTransaction } = require('../utils/transaction');
 const { generateInvoiceCode } = require('../utils/invoice');
 const { updateProductStock } = require('../utils/product');
+const { checkRatingForBooking } = require('../utils/rating');
 // const MyVehicle = require('../models/MyVehicle');
 // const Vendor = require('../models/Vendor');
 // const User = require('../models/User');
@@ -318,7 +319,8 @@ const getBookingDetails = async (req, res) => {
             user: {
                 ...booking.user.toObject(),
                 image: ganerateOneLineImageUrls(booking.user.profileImage, req)
-            }
+            },
+            rating: await checkRatingForBooking({ bookingId: booking._id })
         }
 
         return res.status(200).json({
