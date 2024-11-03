@@ -18,9 +18,17 @@ const RatingSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Vendor"
     },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    },
     bookingType: {
         type: String,
         default: "0" // 0 = normal , 1= emergency
+    },
+    ratingBy: {
+        type: String,
+        default: "0", // 0 = by user, 1 = by vendor
     },
     rating: {
         type: String,

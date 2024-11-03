@@ -9,7 +9,7 @@ const addRating = expressAsyncHandler(async (req, res) => {
         const { role, id } = req.user
         const { bookingId, experience, quality, cost, timeliness, responsiveness } = req.body;
 
-        const ratingAvg = (experience + quality + cost + timeliness + responsiveness) / 5
+        let ratingAvg = (experience + quality + cost + timeliness + responsiveness) / 5
 
         // Verify that booking exists
         const booking = await Booking.findById(bookingId);
@@ -66,6 +66,40 @@ const addRating = expressAsyncHandler(async (req, res) => {
     }
 });
 
+const addRatingByVendor = expressAsyncHandler(async (req, res) => {
+    try {
+        const { role, id } = req.user
+        const { userId, bookingId } = req.body;
+
+        // Create new rating
+        const newRating = new Rating({
+            ownerModel: "Vendor",
+            owner: id,
+            vendor: id,
+            user: userId,
+            ratingBy: "1",
+            booking: bookingId,
+            ...req.body
+        });
+
+        // Save the new rating
+        await newRating.save();
+
+        return res.status(201).json({
+            message: "Rating added successfully",
+            type: "success",
+            rating: newRating,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to add rating",
+            error: error.message,
+            type: "error",
+        });
+    }
+});
+
 const getRatingsForVendor = expressAsyncHandler(async (req, res) => {
     try {
         const vendorId = req.user.id; // assuming vendor is logged in and `req.user` contains vendor info
@@ -76,10 +110,10 @@ const getRatingsForVendor = expressAsyncHandler(async (req, res) => {
         const limitNum = parseInt(limit, 10);
 
         // Calculate total count of ratings for the vendor
-        const totalRatings = await Rating.countDocuments({ vendor: vendorId });
+        const totalRatings = await Rating.countDocuments({ vendor: vendorId, ratingBy: "0" });
 
         // Find ratings with pagination
-        let ratings = await Rating.find({ vendor: vendorId })
+        let ratings = await Rating.find({ vendor: vendorId, ratingBy: "0" })
             .populate("booking", "_id invoice scheduleDate")        // Populate booking details
             .populate("owner", "_id name mobileNo profileImage")          // Populate owner details (could be User or Vendor)
             .sort({ createdAt: -1 })    // Sort by most recent ratings
@@ -128,7 +162,7 @@ const getVendorRatings = expressAsyncHandler(async (req, res) => {
         // Aggregation to count ratings by `ratingAvg` values (1 to 5 stars)
         const starCounts = await Rating.aggregate([
             {
-                $match: { vendor: new mongoose.Types.ObjectId(vendorId) } // Filter by vendor ID 
+                $match: { vendor: new mongoose.Types.ObjectId(vendorId), ratingBy: "0" } // Filter by vendor ID 
             },
             {
                 $addFields: {
@@ -145,7 +179,7 @@ const getVendorRatings = expressAsyncHandler(async (req, res) => {
 
         // Calculate the overall average rating for the vendor
         const avgRatingData = await Rating.aggregate([
-            { $match: { vendor: new mongoose.Types.ObjectId(vendorId) } },
+            { $match: { vendor: new mongoose.Types.ObjectId(vendorId), ratingBy: "0" } },
             {
                 $group: {
                     _id: null,
@@ -171,7 +205,7 @@ const getVendorRatings = expressAsyncHandler(async (req, res) => {
         });
 
         // Paginated list of user ratings
-        let userRatings = await Rating.find({ vendor: vendorId })
+        let userRatings = await Rating.find({ vendor: vendorId, ratingBy: "0" })
             .populate('owner', 'profileImage name mobileNo') // Populate owner name field (assumes `name` exists in `User` and `Vendor` models)
             // .select('ratingAvg quality responsiveness timeliness cost experience text createdAt') // Select fields to display
             .sort({ createdAt: -1 }) // Sort by most recent
@@ -213,5 +247,5 @@ const getVendorRatings = expressAsyncHandler(async (req, res) => {
 
 
 
-module.exports = { addRating, getRatingsForVendor, getVendorRatings };
+module.exports = { addRating, getRatingsForVendor, getVendorRatings, addRatingByVendor };
 

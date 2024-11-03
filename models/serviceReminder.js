@@ -20,6 +20,10 @@ const serviceReminderSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
+    isNotificationSend: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true,
 });
