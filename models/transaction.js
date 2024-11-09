@@ -66,6 +66,9 @@ const transactionSchema = mongoose.Schema({
     isDebitFromWallet: {
         type: String // 0 = no, 1 = yes
     },
+    showName: {
+        type: String
+    },
     note: String
 }, {
     timestamps: true,

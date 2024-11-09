@@ -1,20 +1,70 @@
 const expressAsyncHandler = require('express-async-handler');
 const Transaction = require('../models/transaction')
+const Wallet = require('../models/wallet')
+
+// const getVendorAllTransaction = expressAsyncHandler(async (req, res) => {
+//     try {
+//         const vendor = req.user;
+//         const transaction = await Transaction.find({ owner: vendor.id }).populate("invoiceId").populate("customer").sort({ createdAt: -1 })
+
+//         return res.status(200).json({
+//             message: "all transaction get successfully",
+//             type: "success",
+//             transaction,
+//         });
+//     } catch (error) {
+//         console.error(error);
+//         return res.status(500).json({
+//             message: "Failed to get transaction",
+//             error: error.message,
+//             type: "error",
+//         });
+//     }
+// });
 
 const getVendorAllTransaction = expressAsyncHandler(async (req, res) => {
     try {
         const vendor = req.user;
-        const transaction = await Transaction.find({ owner: vendor.id }).populate("invoiceId").populate("customer").sort({ createdAt: -1 })
 
+        // Step 1: Fetch all transactions for the vendor, populate the customer field
+        const transactions = await Transaction.find({ owner: vendor.id })
+            .populate("invoiceId")   // Populate invoiceId
+            .populate("customer")    // Populate customer
+            .sort({ createdAt: -1 });
+
+        // Step 2: Loop over each transaction and fetch the corresponding wallet name for each customer
+        for (let transaction of transactions) {
+            if (transaction.customer && transaction.customer._id) {
+                // Step 3: Find the wallet associated with this customer and vendor
+                const wallet = await Wallet.findOne({
+                    $or: [
+                        { customer: transaction.customer._id, owner: vendor.id }, // Wallet linked to customer
+                        // { owner: transaction.customer._id, customer: vendor.id }  // Wallet linked to vendor (for some reason)
+                    ]
+                }).select("name"); // Select only the 'name' field from the Wallet model
+
+                // Step 4: Set the showName field from the wallet's name
+                if (wallet) {
+                    transaction.showName = wallet.name;
+                } else {
+                    transaction.showName = ''; // If no wallet is found, set it to empty
+                }
+            } else {
+                transaction.showName = ''; // If no valid customer, set showName to empty
+            }
+        }
+
+        // Step 5: Return the transactions with the showName field added
         return res.status(200).json({
-            message: "all transaction get successfully",
+            message: "All transactions retrieved successfully",
             type: "success",
-            transaction,
+            transactions, // Return the transactions with the showName field populated
         });
+
     } catch (error) {
         console.error(error);
         return res.status(500).json({
-            message: "Failed to get transaction",
+            message: "Failed to retrieve transactions",
             error: error.message,
             type: "error",
         });
