@@ -4,19 +4,20 @@ const Category = require('../models/category');
 // Add Category
 const addCategory = asyncHandler(async (req, res) => {
     try {
-        const { id } = req.user
-        const { name } = req.body
+        const { id, role } = req.user;
+        const { name } = req.body;
         const categoryData = {
             ...req.body,
-            vendor: id
+            vendor: role === 'admin' ? null : id,
+            createdBy: role, // 'admin' or 'vendor'
         };
 
-        const existingCategory = await Category.findOne({ name, vendor: id })
+        const existingCategory = await Category.findOne({ name, vendor: role === 'admin' ? null : id });
 
         if (existingCategory) {
             return res.status(400).json({
-                message: 'Category already exist',
-                type: 'error'
+                message: 'Category already exists',
+                type: 'error',
             });
         }
 
@@ -37,7 +38,7 @@ const addCategory = asyncHandler(async (req, res) => {
     }
 });
 
-// Get Category by ID or all Categoryes for the vendor
+// Get Category by ID or all Categories for the vendor
 const getCategory = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
@@ -46,7 +47,7 @@ const getCategory = asyncHandler(async (req, res) => {
 
         if (id) {
             // Get a specific category by ID
-            category = await Category.findOne({ _id: id, vendor: userId });
+            category = await Category.findOne({ _id: id, $or: [{ vendor: userId }, { createdBy: 'admin' }] });
 
             if (!category) {
                 return res.status(404).json({
@@ -55,8 +56,15 @@ const getCategory = asyncHandler(async (req, res) => {
                 });
             }
         } else {
-            // Get all categoryes for the user
-            role === "admin" ? category = await Category.find() : category = await Category.find({ isActive: true, vendor: userId });
+            // Get all categories for the vendor, including those created by admin
+            category = role === 'admin'
+                ? await Category.find()
+                : await Category.find({
+                    $or: [
+                        { isActive: true, vendor: userId },
+                        { isActive: true, createdBy: 'admin' },
+                    ],
+                });
         }
 
         return res.status(200).json({
@@ -75,7 +83,7 @@ const getCategory = asyncHandler(async (req, res) => {
 // Update Category
 const updateCategory = asyncHandler(async (req, res) => {
     try {
-        const { id: userId } = req.user
+        const { id: userId } = req.user;
         const { id } = req.params;
         const category = await Category.findOne({ _id: id, vendor: userId });
 
@@ -108,12 +116,14 @@ const updateCategory = asyncHandler(async (req, res) => {
 // Delete Category (by ID or all)
 const deleteCategory = asyncHandler(async (req, res) => {
     try {
-        const { id: userId, role } = req.user
+        const { id: userId, role } = req.user;
         const { id } = req.params;
 
         if (id) {
             // Delete a specific category by ID
-            const category = role === "admin" ? await Category.findById(id) : await Category.findOne({ _id: id, vendor: userId })
+            const category = role === 'admin'
+                ? await Category.findById(id)
+                : await Category.findOne({ _id: id, vendor: userId });
 
             if (!category) {
                 return res.status(404).json({
@@ -122,9 +132,9 @@ const deleteCategory = asyncHandler(async (req, res) => {
                 });
             }
 
-            category.isActive = false
+            category.isActive = false;
 
-            await category.save()
+            await category.save();
 
             return res.status(200).json({
                 message: 'Category deleted successfully',
@@ -132,7 +142,7 @@ const deleteCategory = asyncHandler(async (req, res) => {
             });
         } else {
             // Delete all categories
-            //  await Category.deleteMany();
+            // Category.deleteMany()
 
             return res.status(200).json({
                 message: 'All categories deleted successfully',
@@ -152,5 +162,5 @@ module.exports = {
     addCategory,
     updateCategory,
     getCategory,
-    deleteCategory
+    deleteCategory,
 };

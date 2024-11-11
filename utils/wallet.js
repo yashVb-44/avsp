@@ -173,20 +173,21 @@ const processWalletAndTransactionForVendor = async ({ to, vendor, subTotal }) =>
     try {
         // Get the customer wallet balance and check if the wallet exists
         const { isWallet, walletBalance } = await getCustmoreWalletBalance({ customerId: to, ownerID: vendor.id });
-        let remainingAmount = subTotal; // Initialize remaining amount as the subtotal
+        let remainingAmount = subTotal; // Initialize remaining amount as the subtotal   
         let walletDebit = 0; // Initialize the wallet debit amount
         let isTottalyPaid = false
+
         if (isWallet) {
             if (walletBalance < 0) {
-                if (subTotal >= parseInt(walletBalance)) {
-                    walletDebit = walletBalance;
-                    remainingAmount = subTotal - walletBalance;
+                if (subTotal >= Math.abs(walletBalance)) {
+                    walletDebit = Math.abs(walletBalance);
+                    remainingAmount = subTotal - Math.abs(walletBalance);
                 } else {
                     walletDebit = subTotal;
-                    remainingAmount = walletBalance - subTotal;
+                    remainingAmount = subTotal - walletBalance;
                     isTottalyPaid = true
                 }
-            } else if (walletBalance > 0) {
+            } else if (walletBalance >= 0) {
                 walletDebit = 0;
                 remainingAmount = subTotal;
             }

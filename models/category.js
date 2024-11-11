@@ -11,6 +11,9 @@ const categorySchema = new mongoose.Schema({
     vendor: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
+    },
+    createdBy: {
+        type: String,
     }
 }, {
     timestamps: true,
