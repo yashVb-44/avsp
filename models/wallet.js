@@ -21,6 +21,15 @@ const walletSchema = mongoose.Schema({
     name: {
         type: String
     },
+    village: {
+        type: String
+    },
+    city: {
+        type: String
+    },
+    pincode: {
+        type: String
+    },
     amount: {
         type: Number,
         default: 0

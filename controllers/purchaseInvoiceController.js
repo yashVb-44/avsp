@@ -28,7 +28,7 @@ const addPurchaseInvoice = asyncHandler(async (req, res) => {
         const { remainingAmount, walletDebit, isTottalyPaid, walletBalance } = await processWalletAndTransactionForVendor({ to, vendor, subTotal })
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "TempVendor", amountType: "1" })
         await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "1", subType: "1", billingType: isTottalyPaid ? "1" : "0", amountType: "1", amount: walletDebit, totalAmount: subTotal, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "TempVendor", invoice: productWithPrice })
-        if (isTottalyPaid === "1") {
+        if (isTottalyPaid) {
             newPurchaseInvoice.isPaid = true
             newPurchaseInvoice.remainingAmount = 0
         }

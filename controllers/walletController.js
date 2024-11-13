@@ -287,6 +287,7 @@ const addNewUserParty = asyncHandler(async (req, res) => {
 
     // If no wallet exists, create a new one for the user
     const wallet = new Wallet({
+      ...req.body,
       name,
       ownerModel: "Vendor",
       customerModel: "User",
@@ -346,6 +347,7 @@ const addNewVendorParty = asyncHandler(async (req, res) => {
 
     // If no wallet exists, create a new one for the user
     const wallet = new Wallet({
+      ...req.body,
       name,
       ownerModel: "Vendor",
       customerModel: "TempVendor",

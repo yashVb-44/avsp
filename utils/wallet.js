@@ -176,16 +176,15 @@ const processWalletAndTransactionForVendor = async ({ to, vendor, subTotal }) =>
         let remainingAmount = subTotal; // Initialize remaining amount as the subtotal   
         let walletDebit = 0; // Initialize the wallet debit amount
         let isTottalyPaid = false
-
         if (isWallet) {
             if (walletBalance < 0) {
-                if (subTotal >= Math.abs(walletBalance)) {
+                if (subTotal <= Math.abs(walletBalance)) {
                     walletDebit = Math.abs(walletBalance);
                     remainingAmount = subTotal - Math.abs(walletBalance);
+                    isTottalyPaid = true
                 } else {
                     walletDebit = subTotal;
                     remainingAmount = subTotal - walletBalance;
-                    isTottalyPaid = true
                 }
             } else if (walletBalance >= 0) {
                 walletDebit = 0;
