@@ -27,13 +27,15 @@ const tempVendorSchema = mongoose.Schema({
     pincode: {
         type: String
     },
-    city: {
-        type: String,
-    },
     role: {
         type: String,
         default: "vendor" // Changed role field to default to "vendor"
     },
+    bankName: String,
+    accountNumber: String,
+    ifscCode: String,
+    branchName: String,
+    branchAddress: String
 }, {
     timestamps: true,
 });

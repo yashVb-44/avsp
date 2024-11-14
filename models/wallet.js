@@ -30,6 +30,7 @@ const walletSchema = mongoose.Schema({
     pincode: {
         type: String
     },
+    state:String,
     amount: {
         type: Number,
         default: 0
