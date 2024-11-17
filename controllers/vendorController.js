@@ -9,6 +9,7 @@ const ShopGallery = require('../models/shopGallery');
 const AdditionalService = require('../models/additionalService');
 const EmeregencyService = require('../models/emeregencyService');
 const ServiceRate = require('../models/serviceRate');
+const { getVendorRatings } = require('../utils/rating');
 
 
 // Get Vendor Profile
@@ -436,12 +437,14 @@ const filterVendors = asyncHandler(async (req, res) => {
             const shopGallery = await ShopGallery.findOne({ vendor: garage.vendor._id }).select('outsideImage');
             let Image = shopGallery ? shopGallery.outsideImage : null;
             Image = ganerateOneLineImageUrls(Image, req);
+            const ratings = await getVendorRatings({ vendorId: garage.vendor._id });
 
             return {
                 garage: garage,
                 distanceInKm,
                 status,
                 Image,
+                ratings
             };
         }));
 
@@ -521,6 +524,8 @@ const vendorDetails = asyncHandler(async (req, res) => {
             ? { status: 'Open', message: `Close ${endTimeFormatted}` }
             : { status: 'Closed', message: `Open ${startTimeFormatted}` };
 
+        const ratings = await getVendorRatings({ vendorId: garage.vendor._id });
+
         // Prepare the response object
         const response = {
             basicDetails: {
@@ -549,7 +554,8 @@ const vendorDetails = asyncHandler(async (req, res) => {
                 shopServices: garage.shopService,
                 additionalServices: additionalService,
                 emergencyService: emergencyService,
-            }
+            },
+            ratings
         };
 
         // Return the vendor details

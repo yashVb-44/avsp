@@ -37,7 +37,7 @@ const getAddress = asyncHandler(async (req, res) => {
 
         if (id) {
             // Get a specific address by ID
-            address = await Address.findOne({ _id: id, user: userId });
+            address = await Address.findOne({ _id: id, user: userId, isDeleted: false });
 
             if (!address) {
                 return res.status(404).json({
@@ -47,7 +47,7 @@ const getAddress = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all addresses for the user
-            address = await Address.find({ user: userId });
+            address = await Address.find({ user: userId, isDeleted: false });
         }
 
         return res.status(200).json({
@@ -98,8 +98,42 @@ const updateAddress = asyncHandler(async (req, res) => {
     }
 });
 
+const deleteAddress = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        // Find the address by ID and ensure it belongs to the user
+        const address = await Address.findOne({ _id: id, user: userId });
+
+        if (!address) {
+            return res.status(404).json({
+                message: 'Address not found',
+                type: 'error',
+            });
+        }
+
+        // Perform a soft delete by setting isDeleted to true
+        address.isDeleted = true;
+        await address.save();
+
+        return res.status(200).json({
+            message: 'Address deleted successfully',
+            type: 'success',
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to delete address',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
+
 module.exports = {
     addAddress,
     updateAddress,
     getAddress,
+    deleteAddress
 };

@@ -3,6 +3,7 @@ const MyVehicle = require('../models/myVehicle');
 const upload = require('../config/mutler');
 const removeUnwantedImages = require('../utils/deletingFiles');
 const { generateImageUrls } = require('../utils/utils');
+const Vendor = require('../models/vendor');
 
 // Add Vehicle
 const addVehicle = [
@@ -283,7 +284,9 @@ const deleteVehicle = asyncHandler(async (req, res) => {
             if (vehicle.image) {
                 removeUnwantedImages([vehicle.image]);
             }
-            await vehicle.remove();
+            // await vehicle.remove();
+            vehicle.isDeleted = true;
+            await vehicle.save();
 
             return res.status(200).json({
                 message: 'Vehicle deleted successfully',
@@ -299,7 +302,8 @@ const deleteVehicle = asyncHandler(async (req, res) => {
                     removeUnwantedImages(imagesToDelete);
                 }
 
-                await MyVehicle.deleteMany();
+                // await MyVehicle.deleteMany();
+                await MyVehicle.updateMany({}, { $set: { isDeleted: true } });
 
                 return res.status(200).json({
                     message: 'All vehicles deleted successfully',
@@ -320,7 +324,8 @@ const deleteVehicle = asyncHandler(async (req, res) => {
                     removeUnwantedImages(imagesToDelete);
                 }
 
-                await MyVehicle.deleteMany({ userId });
+                // await MyVehicle.deleteMany({ userId });
+                await MyVehicle.updateMany({ userId }, { $set: { isDeleted: true } });
 
                 return res.status(200).json({
                     message: 'All vehicles deleted successfully',
@@ -337,11 +342,55 @@ const deleteVehicle = asyncHandler(async (req, res) => {
     }
 });
 
+const searchVehicleByNumber = asyncHandler(async (req, res) => {
+    try {
+        const { vehicleNumber } = req.query; // Query parameter for the vehicle number
+        const vendorId = req.user.id; // Logged-in vendor ID
+
+        const vendor = await Vendor.findById(vendorId)
+        const vendorServiceType = vendor.serviceType; // Vendor's service type
+        if (!vehicleNumber) {
+            return res.status(400).json({
+                message: 'Vehicle number is required',
+                type: 'error',
+            });
+        }
+
+        // Find the vendor's vehicles with matching vehicleType and vehicleNumber
+        const vehicles = await MyVehicle.find({
+            vehicleType: vendorServiceType,
+            number: { $regex: new RegExp(vehicleNumber, 'i') },
+            isDeleted: false,
+        }).populate('userId')
+
+        if (vehicles.length === 0) {
+            return res.status(404).json({
+                message: 'No vehicles found matching the criteria',
+                type: 'error',
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Vehicles retrieved successfully',
+            type: 'success',
+            data: vehicles,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to search vehicles',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
+
 module.exports = {
     addVehicle,
     getVehicles,
     updateVehicle,
     deleteVehicle,
     addVehicleByVendor,
-    getUserVehiclesByVendor
+    getUserVehiclesByVendor,
+    searchVehicleByNumber
 };

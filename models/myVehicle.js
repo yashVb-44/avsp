@@ -31,6 +31,10 @@ const myVehicleSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
     },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true,
 });

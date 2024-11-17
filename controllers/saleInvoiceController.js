@@ -4,6 +4,7 @@ const { SaleAndPurchaseTransaction } = require('../utils/transaction');
 const { generateInvoiceCode } = require('../utils/invoice');
 const { addRemoveAmountFromWallet, getCustmoreWalletBalance, processWalletAndTransaction } = require('../utils/wallet');
 const { updateProductStock } = require('../utils/product');
+const Wallet = require('../models/wallet');
 
 // Add SaleInvoice
 const addSaleInvoice = asyncHandler(async (req, res) => {
@@ -164,26 +165,68 @@ const getSaleInvoice = asyncHandler(async (req, res) => {
 });
 
 // Get SaleInvoice by ID or all SaleInvoices
+// const getSaleInvoicePartyWise = asyncHandler(async (req, res) => {
+//     try {
+//         const { userId } = req.params;
+//         const vendorId = req.user.id
+//         let saleInvoice;
+
+//         if (userId) {
+//             // Get all sale invoices for the logged-in vendor
+//             saleInvoice = await SaleInvoice.find({ from: vendorId, to: userId, type: "0" }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
+
+//             if (!saleInvoice) {
+//                 return res.status(404).json({
+//                     message: 'Sale invoice not found',
+//                     type: 'error',
+//                 });
+//             }
+//         }
+
+//         return res.status(200).json({
+//             saleInvoice,
+//             type: 'success',
+//         });
+//     } catch (error) {
+//         return res.status(500).json({
+//             message: 'Failed to retrieve sale invoices',
+//             error: error.message,
+//             type: 'error',
+//         });
+//     }
+// });
+
 const getSaleInvoicePartyWise = asyncHandler(async (req, res) => {
     try {
         const { userId } = req.params;
-        const vendorId = req.user.id
-        let saleInvoice;
+        const vendorId = req.user.id;
+        let saleInvoices = [];
 
         if (userId) {
             // Get all sale invoices for the logged-in vendor
-            saleInvoice = await SaleInvoice.find({ from: vendorId, to: userId, type: "0" }).populate('to from productWithPrice.productId invoice').sort({ createdAt: -1 })
+            saleInvoices = await SaleInvoice.find({ from: vendorId, to: userId, type: "0" })
+                .populate('to from productWithPrice.productId invoice')
+                .sort({ createdAt: -1 });
 
-            if (!saleInvoice) {
+            if (!saleInvoices || saleInvoices.length === 0) {
                 return res.status(404).json({
                     message: 'Sale invoice not found',
                     type: 'error',
                 });
             }
+
+            // For each sale invoice, fetch the wallet and add the wallet name
+            saleInvoices = await Promise.all(saleInvoices.map(async (invoice) => {
+                const wallet = await Wallet.findOne({ customer: invoice.to }).select('name'); // Fetch wallet name
+                return {
+                    ...invoice.toObject(), // Convert Mongoose document to plain object
+                    showName: wallet ? wallet.name : null // Add walletName to the object
+                };
+            }));
         }
 
         return res.status(200).json({
-            saleInvoice,
+            saleInvoices,
             type: 'success',
         });
     } catch (error) {

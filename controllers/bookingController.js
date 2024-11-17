@@ -164,6 +164,7 @@ const addBookingByVendor = async (req, res) => {
             vendor,
             bookingID: generateBookingID(), // You can implement a function to generate unique booking IDs
             type: "2",
+            bookingType: "1",
         };
 
         // Handle address based on serviceType
@@ -216,7 +217,7 @@ const addBookingByVendor = async (req, res) => {
         let newBooking = new Booking(bookingData);
         await newBooking.save();
 
-        newBooking = await newBooking.populate('myVehicle')
+        newBooking = await newBooking.populate('myVehicle user')
 
         return res.status(201).json({
             message: "Booking created successfully",
@@ -301,6 +302,7 @@ const getBookingDetails = async (req, res) => {
             .populate('pickupAddress') // Populate pickup address details
             .populate('dropAddress') // Populate drop address details
             .populate('garage')
+            .populate('SubMechanic')
 
         // Check if booking exists
         if (!booking) {

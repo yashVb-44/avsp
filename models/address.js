@@ -39,7 +39,10 @@ const addressSchema = new Schema({
     user: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true,
