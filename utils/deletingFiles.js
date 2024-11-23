@@ -5,10 +5,15 @@ const path = require('path');
 const removeUnwantedImages = (imagePaths) => {
     imagePaths.forEach((imagePath) => {
         try {
-            fs.unlink(path.join(__dirname, '..', imagePath), (err) => {
-                if (err) console.error(`Failed to delete image: ${imagePath}`, err);
-            });
+            if (imagePath) {
+                fs.unlink(path.join(__dirname, '..', imagePath), (err) => {
+                    if (err) console.error(`Failed to delete image: ${imagePath}`, err);
+                });
+            } else {
+                return
+            }
         } catch (error) {
+            return
             console.log(error)
         }
     });

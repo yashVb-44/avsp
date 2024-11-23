@@ -132,9 +132,9 @@ const getVehicles = asyncHandler(async (req, res) => {
             vehicles = generateImageUrls(vehicles.toObject(), req); // Convert to plain object and generate URLs
         } else {
             if (req.user.role === 'admin') {
-                vehicles = await MyVehicle.find().populate('userId');
+                vehicles = await MyVehicle.find({ isDeleted: false }).populate('userId');
             } else {
-                vehicles = await MyVehicle.find({ userId: req.user.id }).populate('userId');
+                vehicles = await MyVehicle.find({ userId: req.user.id, isDeleted: false }).populate('userId');
             }
 
             vehicles = vehicles.map((vehicle) => generateImageUrls(vehicle.toObject(), req)); // Convert to plain object and generate URLs
@@ -171,7 +171,7 @@ const getUserVehiclesByVendor = asyncHandler(async (req, res) => {
             vehicles = generateImageUrls(vehicles.toObject(), req); // Convert to plain object and generate URLs
         } else {
             if (req.user.role === 'vendor') {
-                vehicles = await MyVehicle.find({ userId }).populate('userId');
+                vehicles = await MyVehicle.find({ userId, isDeleted: false }).populate('userId');
             }
 
             vehicles = vehicles.map((vehicle) => generateImageUrls(vehicle.toObject(), req)); // Convert to plain object and generate URLs
