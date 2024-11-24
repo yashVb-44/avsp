@@ -14,6 +14,10 @@ const categorySchema = new mongoose.Schema({
     },
     createdBy: {
         type: String,
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true,

@@ -6,6 +6,7 @@ const { ganerateOneLineImageUrls } = require('../utils/utils');
 const ServiceWithPrice = require('../models/serviceWithPrice');
 const ShopService = require('../models/shopService');
 const Product = require('../models/product');
+const Garage = require('../models/garage');
 const { addRemoveAmountFromWallet, processWalletAndTransaction } = require('../utils/wallet');
 const { addUserWallet } = require('./walletController');
 const { addTransaction, SaleAndPurchaseTransaction } = require('../utils/transaction');
@@ -29,7 +30,7 @@ const addBooking = async (req, res) => {
         }
 
         const invoice = await generateInvoiceCode({ type: "0", fromVendorId: vendor, toId: user.id, toModel: "User" })
-
+        const garageRegisterId = await Garage.findOne({ vendor }).select("registerId")
         // Initialize booking data
         let bookingData = {
             invoice: invoice?._id,
@@ -39,7 +40,7 @@ const addBooking = async (req, res) => {
             services,
             scheduleDate,
             scheduleTime,
-            bookingID: generateBookingID(), // You can implement a function to generate unique booking IDs
+            bookingID: generateBookingID(garageRegisterId.registerId), // You can implement a function to generate unique booking IDs
             serviceType,
             garage,
             status: "0", // change this field
@@ -143,6 +144,8 @@ const addBookingByVendor = async (req, res) => {
             otherService,
         } = req.body;
 
+        const garageRegisterId = await Garage.findOne({ vendor }).select("registerId")
+
         // Validate serviceType
         const validServiceTypes = ["1", "2", "3", "4"];
         if (!validServiceTypes.includes(serviceType)) {
@@ -162,7 +165,7 @@ const addBookingByVendor = async (req, res) => {
             invoice: invoice?._id,
             user: userId,
             vendor,
-            bookingID: generateBookingID(), // You can implement a function to generate unique booking IDs
+            bookingID: generateBookingID(garageRegisterId.registerId), // You can implement a function to generate unique booking IDs
             type: "2",
             bookingType: "1",
         };
@@ -549,10 +552,8 @@ const updateBooking = async (req, res) => {
 
             // Get the existing service IDs from the current booking
             const existingServiceIds = booking.services.map(service => service.toString());
-
             // Find new services that are not already in the booking
             const newServices = services.filter(serviceId => !existingServiceIds.includes(serviceId));
-
             // Map new services and fetch corresponding prices and names
             const newServiceWithPrices = await Promise.all(newServices.map(async (serviceId) => {
                 const servicePrice = await ServiceWithPrice.findOne({
@@ -662,8 +663,28 @@ const removeServiceFromBooking = async (req, res) => {
 };
 
 // Function to generate a unique booking ID
-const generateBookingID = () => {
-    return `BOOK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+const generateBookingID = async (garageRegisterId) => {
+    const currentYear = new Date().getFullYear();
+
+    // Find the last booking for the given garage and year
+    const lastBooking = await Booking.findOne({
+        bookingID: new RegExp(`^${currentYear}-${garageRegisterId}/\\d+$`) // Matches the pattern YYYY-RegisterID/Number
+    }).sort({ createdAt: -1 }); // Sort by latest booking
+
+    // Extract the last incremental number, or start with 0 if no bookings exist
+    let lastNumber = 0;
+    if (lastBooking) {
+        const match = lastBooking.bookingID.match(/\/(\d+)$/); // Extract the number at the end of the booking ID
+        if (match) {
+            lastNumber = parseInt(match[1], 10);
+        }
+    }
+
+    // Increment the number for the new booking
+    const newNumber = lastNumber + 1;
+
+    // Generate the new booking ID
+    return `${currentYear}-${garageRegisterId}/${newNumber}`;
 };
 
 module.exports = { addBooking, addBookingByVendor, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking };

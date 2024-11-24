@@ -6,18 +6,28 @@ const addGarage = asyncHandler(async (req, res) => {
     try {
         const vendorId = req.user.id;
 
-        const garageData = {
-            ...req.body,
-            vendor: vendorId,
-        };
-        const existingGarage = await Garage.findOne({ vendor: vendorId })
+        const existingGarage = await Garage.findOne({ vendor: vendorId });
 
         if (existingGarage) {
             return res.status(400).json({
-                message: 'Garage already exist',
-                type: 'error'
+                message: 'Garage already exists',
+                type: 'error',
             });
         }
+
+        // Find the garage with the highest registerId
+        const lastGarage = await Garage.findOne().sort({ number: -1 });
+
+        // Determine the new registerId and number
+        const newNumber = lastGarage ? lastGarage.number + 1 : 1;
+        const newRegisterId = lastGarage ? (parseInt(lastGarage.registerId) + 1).toString() : "1000";
+
+        const garageData = {
+            ...req.body,
+            vendor: vendorId,
+            registerId: newRegisterId,
+            number: newNumber,
+        };
 
         const garage = new Garage(garageData);
         await garage.save();
@@ -31,7 +41,7 @@ const addGarage = asyncHandler(async (req, res) => {
         return res.status(500).json({
             message: 'Failed to add garage',
             error: error.message,
-            type: 'error'
+            type: 'error',
         });
     }
 });

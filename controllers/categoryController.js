@@ -12,7 +12,7 @@ const addCategory = asyncHandler(async (req, res) => {
             createdBy: role, // 'admin' or 'vendor'
         };
 
-        const existingCategory = await Category.findOne({ name, vendor: role === 'admin' ? null : id });
+        const existingCategory = await Category.findOne({ name, vendor: role === 'admin' ? null : id, isDeleted: false });
 
         if (existingCategory) {
             return res.status(400).json({
@@ -83,11 +83,11 @@ const getCategory = asyncHandler(async (req, res) => {
 // Update Category
 const updateCategory = asyncHandler(async (req, res) => {
     try {
-        const { id: userId } = req.user;
+        const { id: userId, role } = req.user;
         const { id } = req.params;
         const category = await Category.findOne({ _id: id, vendor: userId });
 
-        if (!category) {
+        if (!category && role !== 'admin') {
             return res.status(404).json({
                 message: 'Category not found',
                 type: 'error',
@@ -132,8 +132,8 @@ const deleteCategory = asyncHandler(async (req, res) => {
                 });
             }
 
-            category.isActive = false;
-
+            category.isDeleted = true;
+            category.isActive = false
             await category.save();
 
             return res.status(200).json({

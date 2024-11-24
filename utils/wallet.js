@@ -1,5 +1,6 @@
 const Wallet = require('../models/wallet'); // Import the Wallet model
-const User = require('../models/user')
+const User = require('../models/user');
+const TempVendor = require('../models/tempVendor');
 
 // const addRemoveAmountFromWallet = async ({ ownerType, amountType, ownerId, amount, vendor, user }) => {
 //     // console.log("check", ownerType, amountType, ownerId, amount)
@@ -83,14 +84,16 @@ const addRemoveAmountFromWallet = async ({ ownerModel, customerModel, amountType
                 amountType === "1" ? wallet.virtualAmount += amount : wallet.virtualAmount -= amount;
                 amountType === "1" ? wallet.amount += amount : wallet.amount -= amount;
             } else {
-                // Create a new wallet if it doesn't exist
+                const tempVendor = await TempVendor.findById(customer)
+                // Create a new wallet if it doesn't exist+
                 wallet = new Wallet({
                     owner,
                     ownerModel,
                     customerModel,
                     customer,
                     amount: amountType === "1" ? amount : -amount,
-                    virtualAmount: amountType === "1" ? amount : -amount
+                    virtualAmount: amountType === "1" ? amount : -amount,
+                    name: tempVendor.name
                 });
             }
         } else {

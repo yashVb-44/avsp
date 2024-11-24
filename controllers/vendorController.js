@@ -354,13 +354,12 @@ const filterVendors = asyncHandler(async (req, res) => {
 
         // Find all garages and their corresponding vendors
         const garages = await Garage.find().populate('vendor');
-
         // Filter garages based on distance, mechType, serviceTypes, and timings
-        const filteredGarages = garages.filter(garage => {
+        const filteredGarages = garages?.filter(garage => {
             // Calculate the distance between user's location and garage location
-            const distance = geolib.getDistance(
+            let distance = geolib?.getDistance(
                 { latitude: lat, longitude: lng },
-                { latitude: garage.lat, longitude: garage.lng }
+                { latitude: garage.lat || 21.1835897, longitude: garage.lng || 72.783059 }
             );
 
             // Convert distance to kilometers and check if it's within the radius
@@ -400,7 +399,7 @@ const filterVendors = asyncHandler(async (req, res) => {
         const response = await Promise.all(paginatedGarages.map(async garage => {
             const distanceInKm = geolib.getDistance(
                 { latitude: lat, longitude: lng },
-                { latitude: garage.lat, longitude: garage.lng }
+                { latitude: garage.lat || 21.1835897, longitude: garage.lng || 72.783059 }
             ) / 1000;
 
             // Find next available opening time if the garage is closed today

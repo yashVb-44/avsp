@@ -10,12 +10,12 @@ const addGst = asyncHandler(async (req, res) => {
 
         const existingGst = await Gst.findOne(req.body)
 
-        if (existingGst) {
-            return res.status(400).json({
-                message: 'Gst already exist',
-                type: 'error'
-            });
-        }
+        // if (existingGst) {
+        //     return res.status(400).json({
+        //         message: 'Gst already exist',
+        //         type: 'error'
+        //     });
+        // }
 
         const gst = new Gst(gstData);
         await gst.save();

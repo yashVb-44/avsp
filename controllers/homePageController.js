@@ -22,7 +22,7 @@ const getTodayStats = expressAsyncHandler(async (req, res) => {
         // Today's Completed Bookings
         const todayCompleted = await Booking.find({
             vendor: vendorId,
-            status: "6", // assuming "completed" status marks a completed booking
+            // status: "6", // assuming "completed" status marks a completed booking
             completedDate: today
         }).countDocuments();
 

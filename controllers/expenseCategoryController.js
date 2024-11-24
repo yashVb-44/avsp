@@ -4,15 +4,16 @@ const ExpenseCategory = require('../models/expenseCategory');
 // Add ExpenseCategory
 const addExpenseCategory = asyncHandler(async (req, res) => {
     try {
-        const { id } = req.user;
+        const { id, role } = req.user;
         const { name } = req.body;
 
         const expenseCategoryData = {
             ...req.body,
-            vendor: id
+            vendor: role === 'admin' ? null : id,
+            createdBy: role, // 'admin' or 'vendor'
         };
 
-        const existingExpenseCategory = await ExpenseCategory.findOne({ name, vendor: id });
+        const existingExpenseCategory = await ExpenseCategory.findOne({ name, vendor: role === 'admin' ? null : id, isDeleted: false });
 
         if (existingExpenseCategory) {
             return res.status(400).json({
@@ -86,11 +87,11 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
 // Update ExpenseCategory
 const updateExpenseCategory = asyncHandler(async (req, res) => {
     try {
-        const { id: userId } = req.user;
+        const { id: userId, role } = req.user;
         const { id } = req.params;
         const expenseCategory = await ExpenseCategory.findOne({ _id: id, vendor: userId });
 
-        if (!expenseCategory) {
+        if (!expenseCategory && role !== 'admin') {
             return res.status(404).json({
                 message: 'ExpenseCategory not found',
                 type: 'error',
@@ -134,6 +135,7 @@ const deleteExpenseCategory = asyncHandler(async (req, res) => {
             }
 
             expenseCategory.isActive = false;
+            expenseCategory.isDeleted = true
 
             await expenseCategory.save();
 

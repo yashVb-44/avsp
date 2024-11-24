@@ -24,6 +24,14 @@ const garageSchema = mongoose.Schema({
     address: {
         type: String,
     },
+    registerId: {
+        type: String,
+        default: "1000"
+    },
+    number: {
+        type: Number,
+        default: 1
+    },
     garageAddress: {
         type: String
     },
