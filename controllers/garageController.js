@@ -133,7 +133,6 @@ const updateGarage = asyncHandler(async (req, res) => {
                 message: 'Garage updated successfully',
                 garage,
                 type: 'success'
-
             });
         } else {
             return res.status(403).json({

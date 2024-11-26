@@ -31,6 +31,7 @@ const addBooking = async (req, res) => {
 
         const invoice = await generateInvoiceCode({ type: "0", fromVendorId: vendor, toId: user.id, toModel: "User" })
         const garageRegisterId = await Garage.findOne({ vendor }).select("registerId")
+        const bookingID = await generateBookingID(garageRegisterId.registerId);
         // Initialize booking data
         let bookingData = {
             invoice: invoice?._id,
@@ -40,7 +41,7 @@ const addBooking = async (req, res) => {
             services,
             scheduleDate,
             scheduleTime,
-            bookingID: generateBookingID(garageRegisterId.registerId), // You can implement a function to generate unique booking IDs
+            bookingID, // You can implement a function to generate unique booking IDs
             serviceType,
             garage,
             status: "0", // change this field
@@ -145,7 +146,7 @@ const addBookingByVendor = async (req, res) => {
         } = req.body;
 
         const garageRegisterId = await Garage.findOne({ vendor }).select("registerId")
-
+        const bookingID = await generateBookingID(garageRegisterId.registerId);
         // Validate serviceType
         const validServiceTypes = ["1", "2", "3", "4"];
         if (!validServiceTypes.includes(serviceType)) {
@@ -165,7 +166,7 @@ const addBookingByVendor = async (req, res) => {
             invoice: invoice?._id,
             user: userId,
             vendor,
-            bookingID: generateBookingID(garageRegisterId.registerId), // You can implement a function to generate unique booking IDs
+            bookingID, // You can implement a function to generate unique booking IDs
             type: "2",
             bookingType: "1",
         };
@@ -682,7 +683,6 @@ const generateBookingID = async (garageRegisterId) => {
 
     // Increment the number for the new booking
     const newNumber = lastNumber + 1;
-
     // Generate the new booking ID
     return `${currentYear}-${garageRegisterId}/${newNumber}`;
 };
