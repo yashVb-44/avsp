@@ -331,7 +331,7 @@ const updateVendorProfile = [
 
 const filterVendors = asyncHandler(async (req, res) => {
     try {
-        let { radius, mechType, serviceTypes, lat, lng, dateTime, page = 1, limit = 10 } = req.body;
+        let { radius, mechType, serviceTypes, lat, lng, dateTime, page = 1, limit = 10, search } = req.body;
         // Ensure necessary parameters are provided
         if (!radius || !mechType || !lat || !lng || !dateTime) {
             return res.status(400).json({
@@ -377,9 +377,13 @@ const filterVendors = asyncHandler(async (req, res) => {
 
             // Check if the garage is open based on the weeklyTimings
             const todayTimings = garage.weeklyTimings[requestedDay];
+            // Check if the search term matches the garage name (case-insensitive)
+            const matchesSearch = search
+                ? garage.name.toLowerCase().includes(search.toLowerCase())
+                : true;
 
-            // Return true if within radius, mechType matches, and there's a matching service
-            return isWithinRadius && isMechTypeMatching && hasMatchingService && todayTimings;
+            // Return true if all conditions are met
+            return isWithinRadius && isMechTypeMatching && hasMatchingService && todayTimings && matchesSearch;
         });
 
         // If no garages match the criteria
@@ -410,6 +414,7 @@ const filterVendors = asyncHandler(async (req, res) => {
             for (let i = 0; i < 7; i++) { // Loop through the next 7 days
                 const dayTimings = garage.weeklyTimings[nextAvailableDay % 7]; // Check timings for the next day
                 if (dayTimings && dayTimings.isAvailable) {
+                    console.log(dayTimings.startTime, requestedTime, dayTimings.endTime)
                     // Garage is open, check if it's currently open or find the next opening time
                     if (i === 0 && requestedTime >= dayTimings.startTime && requestedTime <= dayTimings.endTime) {
                         // Garage is open today and within the open hours

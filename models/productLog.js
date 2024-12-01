@@ -36,6 +36,9 @@ const productLogSchema = mongoose.Schema({
     date: {
         type: String
     },
+    invoiceId: {
+        type: String
+    },
     notes: String
 }, {
     timestamps: true,

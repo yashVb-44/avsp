@@ -70,7 +70,7 @@ const returnSaleInvoice = asyncHandler(async (req, res) => {
             toModel: "User",
             from: vendor.id,
             invoice: invoice._id,
-            type: "1"
+            type: "1",
         });
         await newSaleInvoice.save();
         // const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid } = processWalletAndTransaction({ to, vendor, subTotal })
@@ -83,7 +83,6 @@ const returnSaleInvoice = asyncHandler(async (req, res) => {
             saleInvoice: newSaleInvoice,
         });
     } catch (error) {
-        console.log(error)
         return res.status(500).json({
             message: 'Failed to add return sale invoice',
             error: error.message,
@@ -97,7 +96,7 @@ const counterSaleInvoice = asyncHandler(async (req, res) => {
     try {
         const user = req.user;
         const to = req.user.id
-        const { subTotal, type, productWithPrice } = req.body
+        const { subTotal, type, productWithPrice, paymentType } = req.body
         const invoice = await generateInvoiceCode({ type: "2", fromVendorId: user.id, toId: to, toModel: "Vendor" })
 
         if (!invoice) {
@@ -108,13 +107,53 @@ const counterSaleInvoice = asyncHandler(async (req, res) => {
         }
         const newSaleInvoice = new SaleInvoice({
             ...req.body,
+            type: "2",
             toModel: "Vendor",
             from: user.id,
             to,
             invoice: invoice._id
         });
         await newSaleInvoice.save();
-        await SaleAndPurchaseTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "5", billingType: "1", amountType: "0", amount: subTotal, ownerModel: "Vendor", customerModel: "Vendor", invoice: productWithPrice })
+        await SaleAndPurchaseTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "5", billingType: "1", amountType: "0", paymentType, amount: subTotal, ownerModel: "Vendor", customerModel: "Vendor", invoice: productWithPrice })
+        await updateProductStock({ vendorId: user.id, productWithPrice, type: '0' })
+        return res.status(201).json({
+            message: 'Counter Sale invoice added successfully',
+            type: 'success',
+            saleInvoice: newSaleInvoice,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to add counter sale invoice',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
+const counterSaleReturnInvoice = asyncHandler(async (req, res) => {
+    try {
+        const user = req.user;
+        const to = req.user.id
+        const { subTotal, type, productWithPrice, paymentType } = req.body
+        const invoice = await generateInvoiceCode({ type: "6", fromVendorId: user.id, toId: to, toModel: "Vendor" })
+
+        if (!invoice) {
+            return res.status(400).json({
+                message: 'Failed to generate invoice',
+                type: 'error',
+            });
+        }
+        const newSaleInvoice = new SaleInvoice({
+            ...req.body,
+            type: "6",
+            toModel: "Vendor",
+            from: user.id,
+            to,
+            invoice: invoice._id,
+        });
+        await newSaleInvoice.save();
+        await SaleAndPurchaseTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "6", billingType: "1", amountType: "0", amount: subTotal, paymentType, ownerModel: "Vendor", customerModel: "Vendor", invoice: productWithPrice })
+        await updateProductStock({ vendorId: user.id, productWithPrice, type: '1' })
         return res.status(201).json({
             message: 'Counter Sale invoice added successfully',
             type: 'success',
@@ -309,6 +348,36 @@ const deleteSaleInvoice = asyncHandler(async (req, res) => {
     }
 });
 
+const getCounterSaleInvoice = asyncHandler(async (req, res) => {
+    try {
+        const vendorId = req.user.id;
+        let saleInvoices = [];
+
+        // Get all counter sale invoices for the logged-in vendor
+        saleInvoices = await SaleInvoice.find({ from: vendorId, type: "2" })
+            .populate('to from productWithPrice.productId invoice')
+            .sort({ createdAt: -1 });
+
+        if (!saleInvoices || saleInvoices.length === 0) {
+            return res.status(404).json({
+                message: 'Counter Sale invoice not found',
+                type: 'error',
+            });
+        }
+
+        return res.status(200).json({
+            saleInvoices,
+            type: 'success',
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to retrieve counter sale invoices',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
 
 module.exports = {
     addSaleInvoice,
@@ -317,5 +386,7 @@ module.exports = {
     updateSaleInvoice,
     deleteSaleInvoice,
     getSaleInvoicePartyWise,
-    counterSaleInvoice
+    counterSaleInvoice,
+    counterSaleReturnInvoice,
+    getCounterSaleInvoice
 };

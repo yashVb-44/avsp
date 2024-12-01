@@ -34,6 +34,7 @@ const addBooking = async (req, res) => {
         const bookingID = await generateBookingID(garageRegisterId.registerId);
         // Initialize booking data
         let bookingData = {
+            ...req.body,
             invoice: invoice?._id,
             user: user.id,
             vendor,
@@ -493,15 +494,15 @@ const uploadImage = [
             // Allow updates the vendor who created the booking
             if ((user.role === 'vendor' && booking.vendor.equals(user.id))) {
                 const oldImages = [];
-                if (req.files.dentImage) {
+                if (req?.files?.dentImage) {
                     oldImages.push(booking.dentImage);
                     booking.dentImage = req.files.dentImage[0].path;
                 }
-                if (req.files.beforeServiceImage) {
+                if (req?.files?.beforeServiceImage) {
                     oldImages.push(booking.beforeServiceImage);
                     booking.beforeServiceImage = req.files.beforeServiceImage[0].path;
                 }
-                if (req.files.afterServiceImage) {
+                if (req?.files?.afterServiceImage) {
                     oldImages.push(booking.afterServiceImage);
                     booking.afterServiceImage = req.files.afterServiceImage[0].path;
                 }
@@ -625,14 +626,60 @@ const updateBooking = async (req, res) => {
     }
 };
 
+// const removeServiceFromBooking = async (req, res) => {
+//     try {
+//         const vendor = req.user;
+//         const { id } = req.params;
+//         const { serviceIds } = req.body;
+
+//         // Find the booking by ID
+//         let booking = await Booking.findOne({ _id: id, vendor: vendor.id });
+
+//         if (!booking) {
+//             return res.status(404).json({
+//                 message: "Booking not found",
+//                 type: "error",
+//             });
+//         }
+
+//         const newServicesArray = booking.services.filter((service) => service.toString() !== serviceId)
+//         const newServicesPriceArray = booking.serviceWithPrice.filter((servicePrice) => servicePrice.serviceId.toString() !== serviceId)
+
+//         booking.services = newServicesArray
+//         booking.serviceWithPrice = newServicesPriceArray
+
+//         await booking.save();
+
+//         return res.status(200).json({
+//             message: "Service deleted successfully",
+//             type: "success",
+//             booking
+//         });
+//     } catch (error) {
+//         console.log(error)
+//         return res.status(500).json({
+//             message: "Internal server error",
+//             error: error.message
+//         });
+//     }
+// };
+
+
 const removeServiceFromBooking = async (req, res) => {
     try {
         const vendor = req.user;
         const { id } = req.params;
-        const { serviceId } = req.body;
+        const { serviceIds } = req.body;
 
-        // Find the booking by ID
-        let booking = await Booking.findOne({ _id: id, vendor: vendor.id });
+        if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+            return res.status(400).json({
+                message: "Invalid or empty serviceIds",
+                type: "error",
+            });
+        }
+
+        // Find the booking by ID and vendor
+        const booking = await Booking.findOne({ _id: id, vendor: vendor.id });
 
         if (!booking) {
             return res.status(404).json({
@@ -641,24 +688,28 @@ const removeServiceFromBooking = async (req, res) => {
             });
         }
 
-        const newServicesArray = booking.services.filter((service) => service.toString() !== serviceId)
-        const newServicesPriceArray = booking.serviceWithPrice.filter((servicePrice) => servicePrice.serviceId.toString() !== serviceId)
+        // Filter out services and serviceWithPrice that match the serviceIds
+        booking.services = booking.services.filter(
+            (service) => !serviceIds.includes(service.toString())
+        );
 
-        booking.services = newServicesArray
-        booking.serviceWithPrice = newServicesPriceArray
+        booking.serviceWithPrice = booking.serviceWithPrice.filter(
+            (servicePrice) => !serviceIds.includes(servicePrice.serviceId.toString())
+        );
 
+        // Save the updated booking
         await booking.save();
 
         return res.status(200).json({
-            message: "Service deleted successfully",
+            message: "Services removed successfully",
             type: "success",
-            booking
+            booking,
         });
     } catch (error) {
-        console.log(error)
+        console.error(error);
         return res.status(500).json({
             message: "Internal server error",
-            error: error.message
+            error: error.message,
         });
     }
 };

@@ -10,7 +10,8 @@ const generateInvoiceCode = async ({ type, fromVendorId, toId, toModel }) => {
             "2": "counterSale",
             "3": "saleReturn",
             "4": "purchase",
-            "5": "purchaseReturn"
+            "5": "purchaseReturn",
+            "6": "counterSaleReturn"
         };
 
         // Use default 'booking' if type is undefined or not in the list

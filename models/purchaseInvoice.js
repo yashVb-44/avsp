@@ -53,6 +53,10 @@ const purchaseInvoiceSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    purchaseLinkId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PurchaseInvoice',
+    },
     date: String
 }, {
     timestamps: true,

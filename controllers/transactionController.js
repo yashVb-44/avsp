@@ -216,5 +216,210 @@ const getPartyTransactionsByVendor = expressAsyncHandler(async (req, res) => {
     }
 });
 
+// const getCounterSaleTransactionsTypeWise = expressAsyncHandler(async (req, res) => {
+//     try {
+//         const { id } = req.user;
+//         const { type, paymentType, startDate, endDate } = req.query;
 
-module.exports = { getVendorAllTransaction, getAllTransactionWithFilter, getPartyTransactionsByVendor }
+//         if (type === undefined || paymentType === undefined) {
+//             return res.status(400).json({
+//                 message: 'Please provide both type and paymentType parameters.',
+//                 type: 'error',
+//             });
+//         }
+
+//         let filter = { owner: id };
+//         let subTypes = [];
+
+//         // Define the subType and filter logic based on `type`
+//         if (type === "0") {
+//             // All counter sale transactions (subType 5 and 6)
+//             subTypes = ['5', '6'];
+//         } else if (type === "1") {
+//             // Only counter sale transactions (subType 5)
+//             subTypes = ['5'];
+//         } else if (type === "2") {
+//             // Only counter sale return transactions (subType 6)
+//             subTypes = ['6'];
+//         } else {
+//             return res.status(400).json({
+//                 message: 'Invalid type parameter. Valid values are 0, 1, or 2.',
+//                 type: 'error',
+//             });
+//         }
+
+//         // Build the filter for paymentType
+//         if (paymentType === '0') {
+//             // All transactions regardless of payment type
+//             filter.paymentType = { $exists: true };
+//         } else if (paymentType === '1') {
+//             // Only cash transactions
+//             filter.paymentType = '0';
+//         } else if (paymentType === '2') {
+//             // Only online transactions
+//             filter.paymentType = '1';
+//         } else {
+//             return res.status(400).json({
+//                 message: 'Invalid paymentType parameter. Valid values are 0, 1, or 2.',
+//                 type: 'error',
+//             });
+//         }
+
+//         // Add subType filter
+//         filter.subType = { $in: subTypes };
+
+//         // Add date range filter if both `startDate` and `endDate` are provided
+//         if (startDate && endDate) {
+//             const start = new Date(startDate);
+//             const end = new Date(endDate);
+//             end.setUTCHours(23, 59, 59, 999); // Include the end date completely
+//             filter.createdAt = { $gte: start, $lte: end };
+//         } else if (startDate || endDate) {
+//             return res.status(400).json({
+//                 message: 'Please provide both startDate and endDate for filtering by date.',
+//                 type: 'error',
+//             });
+//         }
+
+//         // Query the database
+//         const transactions = await Transaction.find(filter).sort({ createdAt: -1 });
+//         const totalAmount = transactions.reduce((total, transaction) => total + (transaction.amount || 0), 0);
+//         const debitedAmount = transactions
+//             .filter(transaction => transaction.subType === '6')
+//             .reduce((total, transaction) => total + (transaction.amount || 0), 0);
+//         const creditedAmount = transactions
+//             .filter(transaction => transaction.subType === '5')
+//             .reduce((total, transaction) => total + (transaction.amount || 0), 0);
+//         return res.status(200).json({
+//             message: 'Transactions fetched successfully.',
+//             data: transactions,
+//             totalAmount,
+//             debitedAmount,
+//             creditedAmount,
+//             type: 'success',
+//         });
+//     } catch (error) {
+//         console.error(error);
+//         return res.status(500).json({
+//             message: 'Failed to fetch transactions.',
+//             error: error.message,
+//             type: 'error',
+//         });
+//     }
+// });
+
+const getCounterSaleTransactionsTypeWise = expressAsyncHandler(async (req, res) => {
+    try {
+        const { id } = req.user;
+        const { type, paymentType, startDate, endDate, page = 1, limit = 10 } = req.query;
+
+        if (type === undefined || paymentType === undefined) {
+            return res.status(400).json({
+                message: 'Please provide both type and paymentType parameters.',
+                type: 'error',
+            });
+        }
+
+        let filter = { owner: id };
+        let subTypes = [];
+
+        // Define the subType and filter logic based on `type`
+        if (type === "0") {
+            // All counter sale transactions (subType 5 and 6)
+            subTypes = ['5', '6'];
+        } else if (type === "1") {
+            // Only counter sale transactions (subType 5)
+            subTypes = ['5'];
+        } else if (type === "2") {
+            // Only counter sale return transactions (subType 6)
+            subTypes = ['6'];
+        } else {
+            return res.status(400).json({
+                message: 'Invalid type parameter. Valid values are 0, 1, or 2.',
+                type: 'error',
+            });
+        }
+
+        // Build the filter for paymentType
+        if (paymentType === '0') {
+            // All transactions regardless of payment type
+            filter.paymentType = { $exists: true };
+        } else if (paymentType === '1') {
+            // Only cash transactions
+            filter.paymentType = '0';
+        } else if (paymentType === '2') {
+            // Only online transactions
+            filter.paymentType = '1';
+        } else {
+            return res.status(400).json({
+                message: 'Invalid paymentType parameter. Valid values are 0, 1, or 2.',
+                type: 'error',
+            });
+        }
+
+        // Add subType filter
+        filter.subType = { $in: subTypes };
+
+        // Add date range filter if both `startDate` and `endDate` are provided
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setUTCHours(23, 59, 59, 999); // Include the end date completely
+            filter.createdAt = { $gte: start, $lte: end };
+        } else if (startDate || endDate) {
+            return res.status(400).json({
+                message: 'Please provide both startDate and endDate for filtering by date.',
+                type: 'error',
+            });
+        }
+
+        // Get the totals for the entire dataset
+        const allTransactions = await Transaction.find(filter);
+        const totalAmount = allTransactions.reduce((total, transaction) => total + (transaction.amount || 0), 0);
+        const debitedAmount = allTransactions
+            .filter(transaction => transaction.subType === '6')
+            .reduce((total, transaction) => total + (transaction.amount || 0), 0);
+        const creditedAmount = allTransactions
+            .filter(transaction => transaction.subType === '5')
+            .reduce((total, transaction) => total + (transaction.amount || 0), 0);
+
+        // Pagination logic
+        const pageNumber = parseInt(page) || 1;
+        const pageSize = parseInt(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Query the database with pagination
+        const paginatedTransactions = await Transaction.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(pageSize);
+
+        return res.status(200).json({
+            message: 'Transactions fetched successfully.',
+            data: paginatedTransactions,
+            totals: {
+                totalAmount,
+                debitedAmount,
+                creditedAmount,
+            },
+            pagination: {
+                currentPage: pageNumber,
+                totalPages: Math.ceil(allTransactions.length / pageSize),
+                pageSize,
+                totalTransactions: allTransactions.length,
+            },
+            type: 'success',
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: 'Failed to fetch transactions.',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
+
+
+module.exports = { getVendorAllTransaction, getAllTransactionWithFilter, getPartyTransactionsByVendor, getCounterSaleTransactionsTypeWise }

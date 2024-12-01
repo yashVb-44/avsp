@@ -7,7 +7,7 @@ const saleInvoiceSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        default: "0" // 0 = add, 1 = return , 2 = counter
+        default: "0" // 0 = add, 1 = return , 2 = counter, 3 = counter return
     },
     to: {
         type: mongoose.Schema.Types.ObjectId,
@@ -52,6 +52,14 @@ const saleInvoiceSchema = new mongoose.Schema({
     isPaid: {
         type: Boolean,
         default: false
+    },
+    saleLinkId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SaleInvoice',
+    },
+    paymentType: {
+        type: String,
+        default: "0" // 0 = cash , 1 = online
     },
     date: String
 }, {

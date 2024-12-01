@@ -39,6 +39,7 @@ const ratingRoutes = require('./routes/ratingRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const homePageRoutes = require('./routes/homePageRoutes');
 const videoLibraryRoutes = require('./routes/videoLibraryRoutes');
+const extraRoutes = require('./routes/extraRoutes');
 
 router.use("/user", userRoutes)
 router.use("/vendor", vendorRoutes)
@@ -76,5 +77,6 @@ router.use("/rating", ratingRoutes)
 router.use("/report", reportRoutes)
 router.use("/homePage", homePageRoutes)
 router.use("/youtube/video", videoLibraryRoutes)
+router.use("/extra", extraRoutes)
 
 module.exports = router;
