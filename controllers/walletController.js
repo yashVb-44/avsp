@@ -376,6 +376,46 @@ const addNewVendorParty = asyncHandler(async (req, res) => {
   }
 });
 
+const updateParty = async (req, res) => {
+  try {
+    const vendor = req.user;
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Find the wallet by ID
+    let wallet = await Wallet.findOne({ customer: id, owner: vendor.id });
+    if (!wallet) {
+      return res.status(404).json({
+        message: "Party not found",
+        type: "error",
+      });
+    }
+
+    if (updates.customerModel === "TempVendor") {
+      const tempVendor = await TempVendor.findById(id)
+      const { name, ...otherUpdates } = updates;
+      Object.assign(tempVendor, otherUpdates)
+      await tempVendor.save()
+    }
+
+    // Update only the provided fields
+    Object.assign(wallet, updates);
+    await wallet.save();
+
+    return res.status(200).json({
+      message: "party updated successfully",
+      type: "success",
+      wallet
+    });
+  } catch (error) {
+    console.log(error)
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
 // const getAllParties = asyncHandler(async (req, res) => {
 //   try {
 //     const vendor = req.user;
@@ -773,4 +813,4 @@ const getPartyDetails = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, addVendorWallet, getVendorPendingPayments, getWalletListByType, getWalletToPayAndToCollect, getPartyDetails };
+module.exports = { addUserWallet, addNewUserParty, getAllParties, getUserPendingPayments, getUserParties, getVendorParties, addNewVendorParty, addVendorWallet, getVendorPendingPayments, getWalletListByType, getWalletToPayAndToCollect, getPartyDetails, updateParty };

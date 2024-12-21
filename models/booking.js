@@ -194,6 +194,7 @@ const bookingSchema = new Schema({
     cancelledByVendorDate: String,
     cancelledByUserDate: String,
     completedDate: String,
+    completedTime: String,
     recivedByUserDate: String,
     declinedDate: String,
     otherService: String,

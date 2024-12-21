@@ -36,7 +36,11 @@ const subMechanicSchema = mongoose.Schema({
     },
     status: {
         type: Boolean,
-        default: false,
+        default: true,
+    },
+    isDeactive: {
+        type: Boolean,
+        default: false
     },
     reason: {
         type: String,

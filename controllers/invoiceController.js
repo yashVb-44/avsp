@@ -5,6 +5,8 @@ const PurchaseInvoice = require('../models/purchaseInvoice');
 const Booking = require('../models/booking');
 const Transaction = require('../models/transaction');
 const Vendor = require('../models/vendor');
+const User = require('../models/user');
+const Address = require('../models/address');
 const Garage = require('../models/garage');
 
 // Get Next Invoice Number
@@ -56,138 +58,257 @@ const generateInvoiceHTML = async (req, res) => {
     const vendorId = req?.user?.id
     const { id } = req.params;
     const saleInvoice = await SaleInvoice.findById(id).populate('to from productWithPrice.productId invoice');
+    let booking = await Booking.findById(id)
+      .populate('user') // Populate user details
+      .populate('vendor') // Populate vendor details
+      .populate('myVehicle') // Populate vehicle details
+      .populate('services') // Populate service details
+      .populate('pickupAddress') // Populate pickup address details
+      .populate('dropAddress') // Populate drop address details
+      .populate('garage')
+      .populate('SubMechanic')
 
-    if (!saleInvoice) {
+
+    if (!saleInvoice && !booking) {
       return res.status(404).send("Invoice not found");
     }
 
     const garage = await Garage.findOne({ vendorId })
+    let htmlContent = ''
+    let invoiceStyle = `
+<style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 20px;
+          background-color: #f4f4f4;
+        }
+        .invoice-box {
+          max-width: 800px;
+          margin: auto;
+          padding: 20px;
+          border: 1px solid #ddd;
+          background-color: #fff;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+        }
+        .invoice-box table {
+          width: 100%;
+          line-height: 24px;
+          text-align: left;
+          border-collapse: collapse;
+        }
+        .invoice-box table th, .invoice-box table td {
+          padding: 8px;
+          border-bottom: 1px solid #ddd;
+        }
+        .invoice-box table th {
+          background-color: #eee;
+          font-weight: bold;
+        }
+        .invoice-box .title {
+          font-size: 36px;
+          color: #333;
+        }
+        .invoice-box .info-table td {
+          padding-bottom: 10px;
+        }
+        .invoice-box .total-row td {
+          font-weight: bold;
+          border-top: 2px solid #eee;
+        }
+        .invoice-box .text-right {
+          text-align: right;
+        }
+      </style>`
 
-    // Extract data from saleInvoice
-    const { invoice, type, to, from, productWithPrice, subTotal, remainingAmount, isPaid, date } = saleInvoice;
+    if (saleInvoice) {
+      const { invoice, type, to, from, productWithPrice, subTotal, remainingAmount, isPaid, date } = saleInvoice;
+      htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Invoice</title>
+      ${invoiceStyle}
+    </head>
+    <body>
+      <div class="invoice-box">
+        <table class="info-table">
+          <tr>
+            <td class="title">
+              ${garage?.name ? garage.name : 'N/A'}
+            </td>
+            <td class="text-right">
+              Invoice : ${invoice ? invoice.invoiceCode : 'N/A'}<br>
+              Created: ${new Date(invoice?.createdAt).toLocaleDateString()}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <strong>From:</strong> ${from ? from.name : 'N/A'}<br>
+              ${from ? from.email : 'N/A'}<br>
+              ${garage ? garage.address : 'N/A'}
+            </td>
+            <td class="text-right">
+              <strong>To:</strong> ${to ? to.name : 'Customer Name'}<br>
+              ${to ? to.mobileNo : 'xxxxxxxxxx'}
+            </td>
+          </tr>
+        </table>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Price (₹)</th>
+              <th>Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${productWithPrice.map(item => `
+              <tr>
+                <td>${item.productName || 'Unnamed Product'}</td>
+                <td>${item.quantity}</td>
+                <td class="text-right">${item.price}</td>
+                <td class="text-right">${item.price * item.quantity}</td>
+              </tr>`).join('')}
+            <tr class="total-row">
+              <td colspan="3" class="text-right">Total:</td>
+              <td class="text-right">₹${subTotal}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </body>
+    </html>
+  `;
+    }
 
-    // Create dynamic HTML content
-    const htmlContent = `
-     <!DOCTYPE html>
-     <html lang="en">
-     <head>
-       <meta charset="UTF-8">
-       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>Invoice</title>
-       <style>
-         body {
-           font-family: Arial, sans-serif;
-           margin: 0;
-           padding: 20px;
-           background-color: #f4f4f4;
-         }
-         .invoice-box {
-           max-width: 800px;
-           margin: auto;
-           padding: 20px;
-           border: 1px solid #ddd;
-           background-color: #fff;
-           box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-         }
-         .invoice-box table {
-           width: 100%;
-           line-height: 24px;
-           text-align: left;
-           border-collapse: collapse;
-         }
-         .invoice-box table th, .invoice-box table td {
-           padding: 8px;
-           border-bottom: 1px solid #ddd;
-         }
-         .invoice-box table th {
-           background-color: #eee;
-           font-weight: bold;
-         }
-         .invoice-box .title {
-           font-size: 36px;
-           color: #333;
-         }
-         .invoice-box .info-table td {
-           padding-bottom: 10px;
-         }
-         .invoice-box .total-row td {
-           font-weight: bold;
-           border-top: 2px solid #eee;
-         }
-         .invoice-box .text-right {
-           text-align: right;
-         }
-       </style>
-     </head>
-     <body>
-       <div class="invoice-box">
-         <table class="info-table">
-           <tr>
-             <td class="title">
-               ${garage?.name ? garage.name : 'N/A'}
-             </td>
-             <td class="text-right">
-               Invoice : ${invoice ? invoice.invoiceCode : 'N/A'}<br>
-               Created: ${new Date(invoice?.createdAt).toLocaleDateString()}
-             </td>
-           </tr>
-           <tr>
+    if (booking) {
+      const {
+        invoice,
+        user,
+        vendor,
+        productWithPrice,
+        paidAmount,
+        payableAmount,
+        discountAmount,
+        advancePayAmount,
+        quatationNo,
+        scheduleTime,
+        scheduleDate,
+        myVehicle,
+        SubMechanic,
+        serviceWithPrice,
+        labourCharges
+      } = booking
+
+      const userAddress = await Address.findOne({ user: user._id }).select("address")
+      htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Invoice</title>
+      ${invoiceStyle}
+    </head>
+    <body>
+      <div class="invoice-box">
+        <table class="info-table">
+          <tr>
+            <td class="title">
+              ${garage?.name ? garage.name : 'N/A'}
+            </td>
+            <td class="text-right">
+              Quatation No : ${quatationNo || 'N/A'}<br>
+              Date & Time : ${scheduleDate} ${scheduleTime}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <strong>From:</strong> ${vendor ? vendor.name : 'N/A'}<br>
+              ${vendor ? vendor.email : 'N/A'}<br>
+              ${vendor ? vendor.mobileNo : 'N/A'}<br>
+              ${garage ? garage.address : 'N/A'}
+            </td>
+            <td>
+            </td>
+          </tr>
+          <tr>
              <td>
-               <strong>From:</strong> ${from ? from.name : 'N/A'}<br>
-               ${from ? from.email : 'N/A'}<br>
-               ${garage ? garage.address : 'N/A'}
-             </td>
-             <td class="text-right">
-               <strong>To:</strong> ${to ? to.name : 'Customer Name'}<br>
-               ${to ? to.mobileNo : 'xxxxxxxxxx'}
-             </td>
-           </tr>
-         </table>
-         
-         <table>
-           <thead>
-             <tr>
-               <th>Item</th>
-               <th>Quantity</th>
-               <th>Price (₹)</th>
-               <th>Amount (₹)</th>
-             </tr>
-           </thead>
-           <tbody>
-             ${productWithPrice.map(item => `
-               <tr>
-                 <td>${item.productName || 'Unnamed Product'}</td>
-                 <td>${item.quantity}</td>
-                 <td class="text-right">${item.price}</td>
-                 <td class="text-right">${item.price * item.quantity}</td>
-               </tr>`).join('')}
-             <tr class="total-row">
-               <td colspan="3" class="text-right">Total:</td>
-               <td class="text-right">₹${subTotal}</td>
-             </tr>
-           </tbody>
-         </table>
-       </div>
-     </body>
-     </html>
-   `;
-
-
-    // Send the HTML content as the response
-    // res.status(200).json({
-    //   message: 'Invoices retrieved successfully',
-    //   type: 'success',
-    //   htmlContent
-    // });
+              <strong>To:</strong>${user ? user.name : 'Customer Name'}<br>
+              ${user ? user.mobileNo : 'N/A'}<br>
+              ${userAddress ? userAddress.address : 'N/A'}<br>
+            </td>
+            <td>
+            </td>
+          </tr>
+           <tr>
+            <td>
+              <strong>Vehicle Info</strong><br> ${myVehicle ? myVehicle.name : 'N/A'}<br>
+              ${myVehicle ? myVehicle.number : 'N/A'}<br>
+            </td>
+            <td>
+              <strong>Work performed by</strong><br> <b>Mechanic :-</b> ${vendor ? vendor.name : 'N/A'}<br>
+              <b>Sub Mechanic :-</b> ${SubMechanic ? SubMechanic.name : 'N/A'}<br>
+            </td>
+          </tr>
+        </table>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Rate (₹)</th>
+              <th>labour charge (₹)</th>
+              <th>Total (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${productWithPrice.map(item => `
+              <tr>
+                <td>${item.productName || 'Unnamed Product'}</td>
+                <td>${item.quantity}</td>
+                <td class="text-right">${item.price}</td>
+                <td class="text-right">${item.labourCharges || 0}</td>
+                <td class="text-right">${item.price * item.quantity}</td>
+              </tr>`).join('')}
+             ${serviceWithPrice.map(item => `
+              <tr>
+                <td>${item.serviceName || 'Unnamed Service'}</td>
+                <td>${1}</td>
+                <td class="text-right">${item.price}</td>
+                <td class="text-right">${item.labourCharges || 0}</td>
+                <td class="text-right">${item.price}</td>
+              </tr>`).join('')}
+            <tr class="total-row">
+              <td colspan="4" class="text-right">Total:</td>
+              <td class="text-right">₹${advancePayAmount}</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="4" class="text-right">Labour Charges (INR):</td>
+              <td class="text-right">₹${labourCharges}</td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="4" class="text-right">estimated cost:</td>
+              <td class="text-right">₹${payableAmount}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </body>
+    </html>
+  `;
+    }
 
     res.send(htmlContent)
 
   } catch (error) {
     console.error(error);
-    // res.status(500).json({
-    //   message: 'Server error',
-    //   type: 'error'
-    // });
     res.status(500).send("Server Error");
   }
 };

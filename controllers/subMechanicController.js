@@ -90,7 +90,28 @@ const getActiveSubMechanic = asyncHandler(async (req, res) => {
         const { id: vendorId } = req.user;
 
         // Get all active SubMechanics for the logged-in vendor
-        let subMechanic = await SubMechanic.find({ vendor: vendorId, status: "1" }).sort({ createdAt: -1 })
+        let subMechanic = await SubMechanic.find({ vendor: vendorId, status: true, isDeactive: true }).sort({ createdAt: -1 })
+
+        return res.status(200).json({
+            subMechanic,
+            type: 'success',
+        });
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            message: 'Failed to retrieve SubMechanic',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
+const getDeActiveSubMechanic = asyncHandler(async (req, res) => {
+    try {
+        const { id: vendorId } = req.user;
+
+        // Get all active SubMechanics for the logged-in vendor
+        let subMechanic = await SubMechanic.find({ vendor: vendorId, status: true, isDeactive: false }).sort({ createdAt: -1 })
 
         return res.status(200).json({
             subMechanic,
@@ -203,5 +224,6 @@ module.exports = {
     updateSubMechanic,
     getSubMechanic,
     getActiveSubMechanic,
-    deleteSubMechanic
+    deleteSubMechanic,
+    getDeActiveSubMechanic
 };

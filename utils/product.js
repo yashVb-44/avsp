@@ -29,6 +29,7 @@ const updateProductStock = async ({
                     "product": productId,
                     "type": "1", // 0=in, 1=out
                     "salePrice": price,
+                    "vendor": vendorId,
                     // "purchasePrice": price,
                     "stock": foundProduct.stock - quantity,
                     "unitType": foundProduct.unitType,

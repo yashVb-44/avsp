@@ -48,7 +48,7 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
 
         if (id) {
             // Get a specific expense category by ID
-            expenseCategories = await ExpenseCategory.findOne({ _id: id, vendor: userId });
+            expenseCategories = await ExpenseCategory.findOne({ _id: id, $or: [{ vendor: userId }, { createdBy: 'admin' }] });
 
             if (!expenseCategories) {
                 return res.status(404).json({
@@ -58,17 +58,25 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all expense categories for the user, including admin categories
-            if (role === "admin") {
-                expenseCategories = await ExpenseCategory.find();
-            } else {
-                expenseCategories = await ExpenseCategory.find({
-                    isActive: true,
+            // if (role === "admin") {
+            //     expenseCategories = await ExpenseCategory.find();
+            // } else {
+            //     expenseCategories = await ExpenseCategory.find({
+            //         isActive: true,
+            //         $or: [
+            //             { vendor: userId },    // Vendor's own categories
+            //             { vendor: null }       // Admin categories (vendor field is null)
+            //         ]
+            //     });
+            // }
+            expenseCategories = role === 'admin'
+                ? await ExpenseCategory.find()
+                : await ExpenseCategory.find({
                     $or: [
-                        { vendor: userId },    // Vendor's own categories
-                        { vendor: null }       // Admin categories (vendor field is null)
-                    ]
+                        { isActive: true, vendor: userId },
+                        { isActive: true, createdBy: 'admin' },
+                    ],
                 });
-            }
         }
 
         return res.status(200).json({

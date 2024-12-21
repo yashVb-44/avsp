@@ -280,6 +280,63 @@ const getBookingList = async (req, res) => {
     }
 };
 
+const getJobcardList = async (req, res) => {
+    try {
+        const { id, role } = req.user;
+        const { start, end, page = 1, limit = 10 } = req.query; // Get filters and pagination parameters from query
+
+        // Build the query filter
+        const filter = {
+            vendor: id,
+            status: { $in: [5, 6, 8, 9] },
+        };
+
+        // Add date filter if start and end dates are provided
+        if (start || end) {
+            filter.createdAt = {};
+            if (start) filter.createdAt.$gte = new Date(start);
+            if (end) filter.createdAt.$lte = new Date(end);
+        }
+
+        // Calculate pagination options
+        const skip = (page - 1) * limit;
+
+        // Fetch bookings with filters, pagination, and sorting
+        const bookings = await Booking.find(filter)
+            .sort({ createdAt: -1 }) // Sort by creation date, newest first
+            .skip(skip) // Skip documents for pagination
+            .limit(parseInt(limit)) // Limit the number of documents per page
+            .populate('user', 'name email') // Populate user details
+            .populate('vendor', 'name serviceType mobileNo') // Populate vendor details
+            .populate('myVehicle', 'brand model number') // Populate vehicle details
+            .populate('services', 'name serviceType') // Populate service details
+            .populate('pickupAddress', 'address') // Populate pickup address details
+            .populate('dropAddress', 'address') // Populate drop address details
+            .populate('garage', 'name address'); // Populate garage details
+
+        // Get the total count of documents for pagination metadata
+        const total = await Booking.countDocuments(filter);
+
+        return res.status(200).json({
+            type: 'success',
+            message: "JobCard list retrieved successfully",
+            bookings,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit),
+            },
+        });
+    } catch (error) {
+        return res.status(500).json({
+            type: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+
 const getBookingDetails = async (req, res) => {
     try {
         const { id, role } = req.user; // Get user id and role from authentication middleware
@@ -738,4 +795,4 @@ const generateBookingID = async (garageRegisterId) => {
     return `${currentYear}-${garageRegisterId}/${newNumber}`;
 };
 
-module.exports = { addBooking, addBookingByVendor, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking };
+module.exports = { addBooking, addBookingByVendor, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking, getJobcardList };
