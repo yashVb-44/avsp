@@ -196,13 +196,17 @@ const generateInvoiceHTML = async (req, res) => {
         payableAmount,
         discountAmount,
         advancePayAmount,
+        remainingAmount,
         quatationNo,
         scheduleTime,
         scheduleDate,
         myVehicle,
         SubMechanic,
         serviceWithPrice,
-        labourCharges
+        labourCharges,
+        estimatedCost,
+        dropOffCharge,
+        pickUpCharge
       } = booking
 
       const userAddress = await Address.findOne({ user: user._id }).select("address")
@@ -285,18 +289,34 @@ const generateInvoiceHTML = async (req, res) => {
                 <td class="text-right">${item.labourCharges || 0}</td>
                 <td class="text-right">${item.price}</td>
               </tr>`).join('')}
-            <tr class="total-row">
-              <td colspan="4" class="text-right">Total:</td>
-              <td class="text-right">₹${advancePayAmount}</td>
-            </tr>
+            ${dropOffCharge > 0 && `
+          <tr class="total-row">
+            <td colspan="4" class="text-right">Drop Charge:</td>
+            <td class="text-right">₹${dropOffCharge}</td>
+          </tr>`}
+             ${pickUpCharge > 0 && `
+          <tr class="total-row">
+            <td colspan="4" class="text-right">Pick Up Charge:</td>
+            <td class="text-right">₹${pickUpCharge}</td>
+          </tr>`}
             <tr class="total-row">
               <td colspan="4" class="text-right">Labour Charges (INR):</td>
               <td class="text-right">₹${labourCharges}</td>
             </tr>
             <tr class="total-row">
-              <td colspan="4" class="text-right">estimated cost:</td>
-              <td class="text-right">₹${payableAmount}</td>
+              <td colspan="4" class="text-right">Estimated Cost:</td>
+              <td class="text-right">₹${estimatedCost}</td>
             </tr>
+            ${discountAmount > 0 && `
+          <tr class="total-row">
+            <td colspan="4" class="text-right">Discount:</td>
+            <td class="text-right">-₹${discountAmount}</td>
+          </tr>`}
+            ${payableAmount > 0 && `
+          <tr class="total-row">  
+            <td colspan="4" class="text-right">Payable Amount:</td>
+            <td class="text-right">₹${payableAmount}</td>
+          </tr>`}
           </tbody>
         </table>
       </div>
@@ -375,7 +395,7 @@ const generateInvoiceHTML = async (req, res) => {
 const getPartyInvoicesByVendor = async (req, res) => {
   try {
     const { partyId } = req.params;  // Assuming partyId is passed in the params
-
+    const { id } = req.user
 
     // Fetch all invoices for the given party (userId or vendorId) using the 'to' field
     const invoices = await Invoice.find({ to: partyId })
@@ -399,8 +419,8 @@ const getPartyInvoicesByVendor = async (req, res) => {
     // Loop through invoices and categorize them into Sale, Purchase, and Booking invoices
     await Promise.all(invoices.map(async (invoice) => {
       // Check for SaleInvoice and add to saleInvoices array
-      if (await SaleInvoice.exists({ invoice: invoice._id })) {
-        const saleInvoiceDetails = await SaleInvoice.findOne({ invoice: invoice._id }).lean();
+      if (await SaleInvoice.exists({ invoice: invoice._id, from: id })) {
+        const saleInvoiceDetails = await SaleInvoice.findOne({ invoice: invoice._id, from: id }).lean();
         saleInvoices.push({
           ...invoice,
           invoiceId: saleInvoiceDetails._id,
@@ -409,8 +429,8 @@ const getPartyInvoicesByVendor = async (req, res) => {
       }
 
       // Check for PurchaseInvoice and add to purchaseInvoices array
-      if (await PurchaseInvoice.exists({ invoice: invoice._id })) {
-        const purchaseInvoiceDetails = await PurchaseInvoice.findOne({ invoice: invoice._id }).lean();
+      if (await PurchaseInvoice.exists({ invoice: invoice._id, from: id })) {
+        const purchaseInvoiceDetails = await PurchaseInvoice.findOne({ invoice: invoice._id, from: id }).lean();
         purchaseInvoices.push({
           ...invoice,
           purchaseInvoiceDetails
@@ -418,8 +438,8 @@ const getPartyInvoicesByVendor = async (req, res) => {
       }
 
       // Check for Booking and add to bookings array
-      if (await Booking.exists({ invoice: invoice._id })) {
-        const bookingDetails = await Booking.findOne({ invoice: invoice._id }).lean();
+      if (await Booking.exists({ invoice: invoice._id, vendor: id })) {
+        const bookingDetails = await Booking.findOne({ invoice: invoice._id, vendor: id }).lean();
         bookings.push({
           ...invoice,
           bookingDetails
