@@ -37,7 +37,8 @@ const productLogSchema = mongoose.Schema({
         type: String
     },
     invoiceId: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Invoice',
     },
     notes: String
 }, {

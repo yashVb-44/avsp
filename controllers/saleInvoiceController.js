@@ -36,7 +36,7 @@ const addSaleInvoice = asyncHandler(async (req, res) => {
         else if (walletBalance <= subTotal) {
             newSaleInvoice.remainingAmount -= walletDebit
         }
-        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '0' })
+        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '0', invoiceId: newSaleInvoice?.invoice })
         await newSaleInvoice.save();
         return res.status(201).json({
             message: 'Sale invoice added successfully',
@@ -76,7 +76,7 @@ const returnSaleInvoice = asyncHandler(async (req, res) => {
         // const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid } = processWalletAndTransaction({ to, vendor, subTotal })
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "User", amountType: "1" })
         await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "0", subType: "2", amountType: "0", paymentType: "2", totalAmount: subTotal, ownerModel: "Vendor", customerModel: "User", invoice: productWithPrice })
-        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '1' })
+        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '1', invoiceId: newSaleInvoice?.invoice })
         return res.status(201).json({
             message: 'Retrun Sale invoice added successfully',
             type: 'success',
@@ -115,7 +115,7 @@ const counterSaleInvoice = asyncHandler(async (req, res) => {
         });
         await newSaleInvoice.save();
         await SaleAndPurchaseTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "5", billingType: "1", amountType: "0", paymentType, amount: subTotal, ownerModel: "Vendor", customerModel: "Vendor", invoice: productWithPrice })
-        await updateProductStock({ vendorId: user.id, productWithPrice, type: '0' })
+        await updateProductStock({ vendorId: user.id, productWithPrice, type: '0' , invoiceId: newSaleInvoice?.invoice})
         return res.status(201).json({
             message: 'Counter Sale invoice added successfully',
             type: 'success',
@@ -153,7 +153,7 @@ const counterSaleReturnInvoice = asyncHandler(async (req, res) => {
         });
         await newSaleInvoice.save();
         await SaleAndPurchaseTransaction({ customer: to, owner: user.id, invoiceId: invoice._id, transactionType: "0", subType: "6", billingType: "1", amountType: "0", amount: subTotal, paymentType, ownerModel: "Vendor", customerModel: "Vendor", invoice: productWithPrice })
-        await updateProductStock({ vendorId: user.id, productWithPrice, type: '1' })
+        await updateProductStock({ vendorId: user.id, productWithPrice, type: '1', invoiceId: newSaleInvoice?.invoice })
         return res.status(201).json({
             message: 'Counter Sale invoice added successfully',
             type: 'success',

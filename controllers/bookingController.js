@@ -656,7 +656,7 @@ const updateBooking = async (req, res) => {
             const { remainingAmount, walletDebit, isWalletDebit, isTottalyPaid, walletBalance } = await processWalletAndTransaction({ to: booking.user, vendor, subTotal: booking.payableAmount })
             await addRemoveAmountFromWallet({ customer: booking.user, owner: vendor.id, amount: booking.payableAmount, ownerModel: "Vendor", customerModel: "User", amountType: "0" })
             await SaleAndPurchaseTransaction({ customer: booking.user, owner: vendor.id, invoiceId: booking.invoice, transactionType: "3", subType: "0", billingType: isTottalyPaid ? "1" : "0", amountType: "4", paymentType: "2", amount: walletDebit, totalAmount: booking.payableAmount, remainingAmount: remainingAmount, ownerModel: "Vendor", customerModel: "User", isDebitFromWallet: isWalletDebit ? "1" : "0", isWithAddOnAmount: "0" })
-            await updateProductStock({ vendorId: vendor.id, productWithPrice: booking.productWithPrice, type: '0' })
+            await updateProductStock({ vendorId: vendor.id, productWithPrice: booking.productWithPrice, type: '0', invoiceId: booking?.invoice })
 
             if (walletBalance >= booking.payableAmount) {
                 booking.isPaid = true

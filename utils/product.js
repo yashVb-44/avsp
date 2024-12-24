@@ -5,6 +5,7 @@ const ProductLog = require("../models/productLog");
 const updateProductStock = async ({
     productWithPrice,
     vendorId,
+    invoiceId,
     type, // Example: 'sale = 0' or 'restock = 1'
 }) => {
     try {
@@ -34,6 +35,7 @@ const updateProductStock = async ({
                     "stock": foundProduct.stock - quantity,
                     "unitType": foundProduct.unitType,
                     "unit": quantity,
+                    "invoiceId": invoiceId
                     // "date": "2024-09-14",
                     // "notes": "Stock added for seasonal demand"
                 });
@@ -47,9 +49,11 @@ const updateProductStock = async ({
                     "type": "0", // 0=in, 1=out
                     // "salePrice": price,
                     "purchasePrice": price,
+                    "vendor": vendorId,
                     "stock": foundProduct.stock + quantity,
                     "unitType": foundProduct.unitType,
                     "unit": quantity,
+                    "invoiceId": invoiceId
                     // "date": "2024-09-14",
                     // "notes": "Stock added for seasonal demand"
                 });

@@ -36,7 +36,7 @@ const addPurchaseInvoice = asyncHandler(async (req, res) => {
             newPurchaseInvoice.remainingAmount = remainingAmount
         }
         await newPurchaseInvoice.save();
-        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '1' })
+        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '1', invoiceId: newPurchaseInvoice?.invoice })
         return res.status(201).json({
             message: 'Puchase invoice added successfully',
             type: 'success',
@@ -74,7 +74,7 @@ const returnPurchaseInvoice = asyncHandler(async (req, res) => {
         await newPurchaseInvoice.save();
         await addRemoveAmountFromWallet({ customer: to, owner: vendor.id, amount: subTotal, ownerModel: "Vendor", customerModel: "TempVendor", amountType: "0" })
         await SaleAndPurchaseTransaction({ customer: to, owner: vendor.id, invoiceId: invoice._id, transactionType: "1", subType: "2", amountType: "2", totalAmount: subTotal, ownerModel: "Vendor", customerModel: "TempVendor", invoice: productWithPrice })
-        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '0' })
+        await updateProductStock({ vendorId: vendor.id, productWithPrice, type: '0', invoiceId: newPurchaseInvoice?.invoice })
         return res.status(201).json({
             message: 'Retrun Purchase invoice added successfully',
             type: 'success',

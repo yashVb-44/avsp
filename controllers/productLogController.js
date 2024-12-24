@@ -48,7 +48,7 @@ const getProductHistory = asyncHandler(async (req, res) => {
         if (id) {
             // Get a specific product by ID
             // productHistory = await ProductLog.find({ vendor: vendor.id, product: id }).sort({ createdAt: -1 })
-            productHistory = await ProductLog.find({ product: id }).sort({ createdAt: -1 })
+            productHistory = await ProductLog.find({ product: id }).sort({ createdAt: -1 }).populate("invoiceId")
             if (!productHistory) {
                 return res.status(404).json({
                     message: 'Product history not found',
