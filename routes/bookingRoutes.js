@@ -2,13 +2,14 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateAndAuthorize } = require('../middleware/authMiddleware');
-const { addBooking, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking, addBookingByVendor, getJobcardList } = require('../controllers/bookingController');
+const { addBooking, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking, addBookingByVendor, getJobcardList, getJobcardListWithFilter } = require('../controllers/bookingController');
 
 
 router.post('/add', authenticateAndAuthorize(['user']), addBooking);
 router.post('/add/byVendor', authenticateAndAuthorize(['vendor']), addBookingByVendor);
 router.get('/', authenticateAndAuthorize(['admin', 'user', 'vendor']), getBookingList);
 router.get('/jobcard/list', authenticateAndAuthorize(['vendor']), getJobcardList);
+router.get('/jobcard/filter/list', authenticateAndAuthorize(['vendor']), getJobcardListWithFilter);
 router.get('/details/:bookingId', authenticateAndAuthorize(['admin', 'user', 'vendor']), getBookingDetails);
 router.post('/ofVendor', authenticateAndAuthorize(['vendor']), getBookingListOfVendor);
 router.put('/cancel/:bookingId', authenticateAndAuthorize(['user']), cancelBooking);

@@ -15,7 +15,7 @@ const { updateProductStock } = require('../utils/product');
 const { checkRatingForBooking } = require('../utils/rating');
 // const MyVehicle = require('../models/MyVehicle');
 // const Vendor = require('../models/Vendor');
-// const User = require('../models/User');
+const User = require('../models/user');
 
 const addBooking = async (req, res) => {
     try {
@@ -336,6 +336,101 @@ const getJobcardList = async (req, res) => {
         });
     }
 };
+
+const getJobcardListWithFilter = async (req, res) => {
+    try {
+        const { id, role } = req.user;
+        const { start, end, page = 1, limit = 10, search, type } = req.query;
+
+        // Build the query filter
+        const filter = {
+            vendor: id,
+        };
+
+        // Add date filter if start and end dates are provided
+        if (start || end) {
+            filter.createdAt = {};
+            if (start) filter.createdAt.$gte = new Date(start);
+            if (end) filter.createdAt.$lte = new Date(end);
+        }
+
+        // Add type filter for bookingType
+        if (type) {
+            const bookingTypes = type.split(',').map(t => t.trim());
+            filter.bookingType = { $in: bookingTypes };
+        }
+
+        // If a search term is provided, we need to perform the search on the User model
+        if (search) {
+            const users = await User.find({
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                ]
+            });
+
+            // Collect the user ids that match the search query
+            const userIds = users.map(user => user._id);
+
+            // Modify the filter to only include bookings related to these users
+            if (userIds.length > 0) {
+                filter.user = { $in: userIds };
+            } else {
+                // If no users match, return an empty response or handle it as needed
+                return res.status(200).json({
+                    type: 'success',
+                    message: "No matching users found",
+                    bookings: [],
+                    pagination: {
+                        total: 0,
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        totalPages: 0,
+                    },
+                });
+            }
+        }
+
+        // Calculate pagination options
+        const skip = (page - 1) * limit;
+
+        // Fetch bookings with filters, pagination, and sorting
+        const bookings = await Booking.find(filter)
+            .sort({ createdAt: -1 }) // Sort by creation date, newest first
+            .skip(skip) // Skip documents for pagination
+            .limit(parseInt(limit)) // Limit the number of documents per page
+            .populate('user', 'name email') // Populate user details
+            .populate('vendor', 'name serviceType mobileNo') // Populate vendor details
+            .populate('myVehicle', 'brand model number') // Populate vehicle details
+            .populate('services', 'name serviceType') // Populate service details
+            .populate('pickupAddress', 'address') // Populate pickup address details
+            .populate('dropAddress', 'address') // Populate drop address details
+            .populate('garage', 'name address'); // Populate garage details
+
+        // Get the total count of documents for pagination metadata
+        const total = await Booking.countDocuments(filter);
+
+        return res.status(200).json({
+            type: 'success',
+            message: "JobCard list retrieved successfully",
+            bookings,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit),
+            },
+        });
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            type: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+
 
 const getBookingDetails = async (req, res) => {
     try {
@@ -795,4 +890,4 @@ const generateBookingID = async (garageRegisterId) => {
     return `${currentYear}-${garageRegisterId}/${newNumber}`;
 };
 
-module.exports = { addBooking, addBookingByVendor, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking, getJobcardList };
+module.exports = { addBooking, addBookingByVendor, getBookingList, getBookingDetails, cancelBooking, getBookingListOfVendor, declineBooking, uploadImage, updateBooking, removeServiceFromBooking, getJobcardList, getJobcardListWithFilter };

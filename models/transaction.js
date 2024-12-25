@@ -54,7 +54,7 @@ const transactionSchema = mongoose.Schema({
     },
     transactionType: {
         type: String,
-        default: "0" // 0 = sales, 1 = purchase, 3 = others
+        default: "0" // 0 = sales, 1 = purchase, 2 = others
     },
     subType: {
         type: String,
@@ -68,6 +68,14 @@ const transactionSchema = mongoose.Schema({
     },
     showName: {
         type: String
+    },
+    expenseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        refPath: 'Expense',
+    },
+    expenseCategory: {
+        type: mongoose.Schema.Types.ObjectId,
+        refPath: 'ExpenseCategory',
     },
     note: String
 }, {

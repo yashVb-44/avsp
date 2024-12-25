@@ -1,6 +1,10 @@
 const expressAsyncHandler = require('express-async-handler');
 const Transaction = require('../models/transaction')
-const Wallet = require('../models/wallet')
+const PurchaseInvoice = require('../models/purchaseInvoice')
+const SaleInvoice = require('../models/saleInvoice')
+const Wallet = require('../models/wallet');
+const { default: mongoose } = require('mongoose');
+const Invoice = require('../models/invoice');
 
 // const getVendorAllTransaction = expressAsyncHandler(async (req, res) => {
 //     try {
@@ -121,6 +125,70 @@ const getVendorAllTransaction = expressAsyncHandler(async (req, res) => {
         console.error(error);
         return res.status(500).json({
             message: "Failed to retrieve transactions",
+            error: error.message,
+            type: "error",
+        });
+    }
+});
+
+const getVendorTransactionDetails = expressAsyncHandler(async (req, res) => {
+    try {
+        const vendor = req.user;
+        const { transactionId } = req.params;
+
+        // Step 1: Find the transaction by ID and verify ownership
+        const transaction = await Transaction.findOne({
+            _id: transactionId,
+            owner: vendor.id,
+        }).populate("customer").populate("invoiceId");
+
+        if (!transaction) {
+            return res.status(404).json({
+                message: "Transaction not found",
+                type: "error",
+            });
+        }
+
+        // Step 2: Determine model and populate transactions manually
+        const transactionsWithDetails = [];
+        for (const txn of transaction.transactions) {
+            const modelName = txn.transactionType
+            const populatedTxn = await mongoose
+                .model(modelName)
+                .findById(txn.id)
+                .select("invoice")
+            const invoice = await Invoice.findById(populatedTxn.invoice).select("invoiceCode")
+            transactionsWithDetails.push({
+                ...txn,
+                id: txn?.id,
+                invoiceCode: invoice?.invoiceCode || null,
+            });
+        }
+
+        // Step 3: Get wallet name for the customer
+        let showName = "";
+        if (transaction.customer && transaction.customer._id) {
+            const wallet = await Wallet.findOne({
+                $or: [{ customer: transaction.customer._id, owner: vendor.id }],
+            }).select("name");
+
+            showName = wallet ? wallet.name : "";
+        }
+
+        // Step 4: Return the response
+        return res.status(200).json({
+            message: "Transaction details retrieved successfully",
+            type: "success",
+            transaction: {
+                ...transaction.toObject(),
+                showName,
+                transactions: transactionsWithDetails,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to retrieve transaction details",
             error: error.message,
             type: "error",
         });
@@ -422,4 +490,4 @@ const getCounterSaleTransactionsTypeWise = expressAsyncHandler(async (req, res) 
 
 
 
-module.exports = { getVendorAllTransaction, getAllTransactionWithFilter, getPartyTransactionsByVendor, getCounterSaleTransactionsTypeWise }
+module.exports = { getVendorAllTransaction, getAllTransactionWithFilter, getPartyTransactionsByVendor, getCounterSaleTransactionsTypeWise, getVendorTransactionDetails }
