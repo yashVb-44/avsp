@@ -128,9 +128,105 @@ const getServicesForUser = asyncHandler(async (req, res) => {
     }
 });
 
+// Get Services for Admin
+const getServicesForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        // Build search query based on name, email, or mobile number
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                ]
+            };
+        }
+
+        // Calculate total services matching the query
+        const totalServices = await ShopService.countDocuments(searchQuery);
+
+
+        let services = await ShopService.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        services = services.map((service) => {
+            let serviceTypeName = "";
+            if (service.serviceType === "1") {
+                serviceTypeName = "2 wheeler";
+            } else if (service.serviceType === "2") {
+                serviceTypeName = "3 wheeler";
+            } else if (service.serviceType === "3") {
+                serviceTypeName = "4 wheeler";
+            } else if (service.serviceType === "4") {
+                serviceTypeName = "Heavy Vehicle"; // Fixed spelling
+            }
+            return {
+                ...service.toObject(), // Ensure we return a plain object
+                serviceTypeName
+            };
+        });
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Services list retrieved successfully',
+            totalServices,
+            totalPages: Math.ceil(totalServices / limitNumber),
+            currentPage: pageNumber,
+            services,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching services list',
+            error: error.message
+        });
+    }
+};
+
+const updateService = asyncHandler(async (req, res) => {
+    try {
+        const { shopServiceId } = req.params
+        const { id, role } = req.user;
+        const existingService = role === "admin" ? await ShopService.findById(shopServiceId) : await ShopService.findOne({ _id: shopServiceId, createdBy: id })
+
+        if (!existingService) {
+            return res.status(403).json({
+                message: 'Service not exist',
+                type: 'error'
+            });
+        }
+
+        Object.assign(existingService, req.body);
+        await existingService.save()
+        return res.status(201).json({
+            message: 'Service update successfully',
+            type: 'success',
+            service: existingService
+        });
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            message: 'Server error',
+            type: 'error',
+            error: error.message
+        });
+    }
+});
+
 
 module.exports = {
     createService,
     getServices,
     getServicesForUser,
+    getServicesForAdmin,
+    updateService
 };

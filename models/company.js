@@ -10,6 +10,10 @@ const companySchema = new mongoose.Schema({
     companyName: {
         type: String,
     },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true,
 });

@@ -3,6 +3,7 @@ const User = require('../models/user');
 const upload = require('../config/mutler');
 const removeUnwantedImages = require('../utils/deletingFiles');
 const expressAsyncHandler = require('express-async-handler');
+const { generateImageUrls } = require('../utils/utils');
 
 // Get User Profile
 const getUserProfile = asyncHandler(async (req, res) => {
@@ -61,7 +62,7 @@ const updateUserProfile = [
                     type: 'error',
                 });
             }
-            const user = await User.findById(userId);
+            let user = await User.findById(userId);
             if (!user) {
                 if (req.file) {
                     removeUnwantedImages([req.file.path]);
@@ -80,6 +81,10 @@ const updateUserProfile = [
             if (email) user.email = email;
             if (gender) user.gender = gender;
             if (dateOfBirth) user.dateOfBirth = dateOfBirth;
+
+            if (req.user.role === 'admin') {
+                Object.assign(user, req.body);
+            }
 
             // Update profile image if provided
             if (req.file) {
@@ -192,10 +197,83 @@ const addUserByVendor = expressAsyncHandler(async (req, res) => {
     }
 });
 
+const getUsersForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        // Build search query based on name, email, or mobile number
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                    { email: regex },
+                    { mobileNo: regex }
+                ]
+            };
+        }
+
+        // Calculate total users matching the query
+        const totalUsers = await User.countDocuments(searchQuery);
+
+        // Fetch paginated users from the database
+        let users = await User.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        users = users.map((user) => generateImageUrls(user.toObject(), req));
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'User list retrieved successfully',
+            totalUsers,
+            totalPages: Math.ceil(totalUsers / limitNumber),
+            currentPage: pageNumber,
+            users,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching user list',
+            error: error.message
+        });
+    }
+};
+
+const deleteUser = async (req, res) => {
+    try {
+        const userId = req.params.id
+        let user = await User.findById(userId);
+        user.isDeleted = true
+        await user.save()
+
+        res.status(200).json({
+            type: 'success',
+            message: 'User deleted successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error for delete user',
+            error: error.message
+        });
+    }
+}
+
+
 
 module.exports = {
     getUserProfile,
     updateUserProfile,
     getUserListWithMobileNo,
-    addUserByVendor
+    addUserByVendor,
+    getUsersForAdmin,
+    deleteUser
 };

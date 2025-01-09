@@ -23,7 +23,7 @@ const emergencyServiceSchema = mongoose.Schema({
     },
     isShow: {
         type: Boolean,
-        default: false
+        default: true
     },
 }, {
     timestamps: true,

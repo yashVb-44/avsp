@@ -61,8 +61,8 @@ const getCategory = asyncHandler(async (req, res) => {
                 ? await Category.find()
                 : await Category.find({
                     $or: [
-                        { isActive: true, vendor: userId },
-                        { isActive: true, createdBy: 'admin' },
+                        { isDeleted: true, vendor: userId },
+                        { isDeleted: true, isActive: true, createdBy: 'admin' },
                     ],
                 });
         }
@@ -80,14 +80,57 @@ const getCategory = asyncHandler(async (req, res) => {
     }
 });
 
+const getCategorysForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                ]
+            };
+        }
+
+        const totalCategories = await Category.countDocuments(searchQuery);
+
+        let categories = await Category.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Categories list retrieved successfully',
+            totalCategories,
+            totalPages: Math.ceil(totalCategories / limitNumber),
+            currentPage: pageNumber,
+            categories,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching categories list',
+            error: error.message
+        });
+    }
+};
+
 // Update Category
 const updateCategory = asyncHandler(async (req, res) => {
     try {
         const { id: userId, role } = req.user;
         const { id } = req.params;
-        const category = await Category.findOne({ _id: id, vendor: userId });
+        const category = role === "admin" ? await Category.findById(id) : await Category.findOne({ _id: id, vendor: userId });
 
-        if (!category && role !== 'admin') {
+        if (!category) {
             return res.status(404).json({
                 message: 'Category not found',
                 type: 'error',
@@ -133,7 +176,7 @@ const deleteCategory = asyncHandler(async (req, res) => {
             }
 
             category.isDeleted = true;
-            category.isActive = false
+            // category.isActive = false
             await category.save();
 
             return res.status(200).json({
@@ -158,9 +201,12 @@ const deleteCategory = asyncHandler(async (req, res) => {
     }
 });
 
+
+
 module.exports = {
     addCategory,
     updateCategory,
     getCategory,
     deleteCategory,
+    getCategorysForAdmin
 };

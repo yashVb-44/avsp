@@ -73,8 +73,8 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
                 ? await ExpenseCategory.find()
                 : await ExpenseCategory.find({
                     $or: [
-                        { isActive: true, vendor: userId },
-                        { isActive: true, createdBy: 'admin' },
+                        { isDeleted: true, vendor: userId },
+                        { isDeleted: true, isActive: true, createdBy: 'admin' },
                     ],
                 });
         }
@@ -92,16 +92,59 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
     }
 });
 
+const getExpenseCategorysForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                ]
+            };
+        }
+
+        const totalCategories = await ExpenseCategory.countDocuments(searchQuery);
+
+        let categories = await ExpenseCategory.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Expense Categories list retrieved successfully',
+            totalCategories,
+            totalPages: Math.ceil(totalCategories / limitNumber),
+            currentPage: pageNumber,
+            categories,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching expense categories list',
+            error: error.message
+        });
+    }
+};
+
 // Update ExpenseCategory
 const updateExpenseCategory = asyncHandler(async (req, res) => {
     try {
         const { id: userId, role } = req.user;
         const { id } = req.params;
-        const expenseCategory = await ExpenseCategory.findOne({ _id: id, vendor: userId });
+        const expenseCategory = role === "admin" ? await ExpenseCategory.findById(id) : await ExpenseCategory.findOne({ _id: id, vendor: userId });
 
         if (!expenseCategory && role !== 'admin') {
             return res.status(404).json({
-                message: 'ExpenseCategory not found',
+                message: 'Expense Category not found',
                 type: 'error',
             });
         }
@@ -112,7 +155,7 @@ const updateExpenseCategory = asyncHandler(async (req, res) => {
         await expenseCategory.save();
 
         return res.status(200).json({
-            message: 'ExpenseCategory updated successfully',
+            message: 'Expense Category updated successfully',
             type: 'success',
             expenseCategory,
         });
@@ -142,7 +185,7 @@ const deleteExpenseCategory = asyncHandler(async (req, res) => {
                 });
             }
 
-            expenseCategory.isActive = false;
+            // expenseCategory.isActive = false;
             expenseCategory.isDeleted = true
 
             await expenseCategory.save();
@@ -173,5 +216,6 @@ module.exports = {
     addExpenseCategory,
     updateExpenseCategory,
     getExpenseCategory,
+    getExpenseCategorysForAdmin,
     deleteExpenseCategory
 };

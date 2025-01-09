@@ -23,7 +23,7 @@ const shopServiceSchema = mongoose.Schema({
     },
     isShow: {
         type: Boolean,
-        default: false
+        default: true
     },
     booking: {
         type: mongoose.Schema.Types.ObjectId,

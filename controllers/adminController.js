@@ -50,7 +50,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
     // Check if admin exists
     const admin = await Admin.findOne({ name });
     if (!admin) {
-        return res.status(400).json({
+        return res.status(401).json({
             message: 'Invalid credentials',
             type: 'error'
         });
@@ -59,7 +59,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
     // Check password
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
-        return res.status(400).json({
+        return res.status(401).json({
             message: 'Invalid credentials',
             type: 'error'
         });

@@ -34,7 +34,7 @@ const addCompany = asyncHandler(async (req, res) => {
     }
 });
 
-// Get Company by ID or all Companyes for the user
+// Get Company by ID or all Companies for the user
 const getCompany = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
@@ -53,7 +53,7 @@ const getCompany = asyncHandler(async (req, res) => {
             }
         } else {
             // Get all companyes for the user
-            company = await Company.find();
+            company = await Company.find({ isDeleted: false });
         }
 
         return res.status(200).json({
@@ -68,6 +68,67 @@ const getCompany = asyncHandler(async (req, res) => {
         });
     }
 });
+
+const getCompanyForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                ]
+            };
+        }
+
+        const totalCompanies = await Company.countDocuments(searchQuery);
+
+        let companies = await Company.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        companies = companies.map((company) => {
+            let serviceTypeName = "";
+            if (company.serviceType === "1") {
+                serviceTypeName = "2 wheeler";
+            } else if (company.serviceType === "2") {
+                serviceTypeName = "3 wheeler";
+            } else if (company.serviceType === "3") {
+                serviceTypeName = "4 wheeler";
+            } else if (company.serviceType === "4") {
+                serviceTypeName = "Heavy Vehicle"; // Fixed spelling
+            }
+            return {
+                ...company.toObject(), // Ensure we return a plain object
+                serviceTypeName
+            };
+        });
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Companies list retrieved successfully',
+            totalCompanies,
+            totalPages: Math.ceil(totalCompanies / limitNumber),
+            currentPage: pageNumber,
+            companies,
+        });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching companies list',
+            error: error.message
+        });
+    }
+};
 
 // Update Company
 const updateCompany = asyncHandler(async (req, res) => {
@@ -117,7 +178,9 @@ const deleteCompany = asyncHandler(async (req, res) => {
                 });
             }
 
-            await Company.deleteOne({ _id: id });
+            company.isDeleted = true;
+            // await Company.findByIdAndDelete(id)
+            await company.save()
 
             return res.status(200).json({
                 message: 'Company deleted successfully',
@@ -125,7 +188,7 @@ const deleteCompany = asyncHandler(async (req, res) => {
             });
         } else {
             // Delete all companies
-            await Company.deleteMany();
+            // await Company.deleteMany();
 
             return res.status(200).json({
                 message: 'All companies deleted successfully',
@@ -133,6 +196,7 @@ const deleteCompany = asyncHandler(async (req, res) => {
             });
         }
     } catch (error) {
+        console.log(error)
         return res.status(500).json({
             message: 'Failed to delete company',
             error: error.message,
@@ -145,5 +209,6 @@ module.exports = {
     addCompany,
     updateCompany,
     getCompany,
-    deleteCompany
+    deleteCompany,
+    getCompanyForAdmin
 };
