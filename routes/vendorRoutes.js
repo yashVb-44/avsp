@@ -1,7 +1,7 @@
 // routes/vendorRoutes.js
 const express = require('express');
 const { register, verifyOtp, sendOtp } = require('../controllers/authController');
-const { getVendorProfile, updateVendorProfile, filterVendors, vendorDetails } = require('../controllers/vendorController');
+const { getVendorProfile, updateVendorProfile, filterVendors, vendorDetails, deActiveVendorAccount, deleteVendorAccount } = require('../controllers/vendorController');
 const { authenticateAndAuthorize } = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -12,5 +12,7 @@ router.get('/profile/:id?', authenticateAndAuthorize(['vendor', 'admin']), getVe
 router.put('/profile/:id?', authenticateAndAuthorize(['vendor', 'admin']), updateVendorProfile);
 router.post('/filter', authenticateAndAuthorize(['user']), filterVendors);
 router.post('/details/:id?', authenticateAndAuthorize(['user']), vendorDetails);
+router.post('/account/deActivate', authenticateAndAuthorize(['vendor']), deActiveVendorAccount);
+router.delete('/account/delete', authenticateAndAuthorize(['vendor']), deleteVendorAccount);
 
 module.exports = router;

@@ -10,6 +10,10 @@ const subMechanicSchema = mongoose.Schema({
     joiningDate: {
         type: Date,
     },
+    reJoiningDate: {
+        type: Date,
+        default: null,
+    },
     leavingDate: {
         type: Date,
         default: null,

@@ -53,6 +53,14 @@ const saleInvoiceSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    discountAmount: {
+        type: Number,
+        default: 0
+    },
+    labourCharges: {
+        type: Number,
+        default: 0
+    },
     saleLinkId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'SaleInvoice',

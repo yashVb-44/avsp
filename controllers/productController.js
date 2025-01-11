@@ -111,16 +111,16 @@ const getProduct = asyncHandler(async (req, res) => {
         // Sorting
         switch (sort) {
             case "highToLow":
-                sortOption.stock = -1; // Stock: high to low
+                sortOption = { stock: -1 }; // Stock: high to low
                 break;
             case "lowToHigh":
-                sortOption.stock = 1; // Stock: low to high
+                sortOption = { stock: 1 }; // Stock: low to high
                 break;
             case "nameAsc":
-                sortOption.name = 1; // Name: A-Z
+                sortOption = { name: 1 }; // Name: A-Z
                 break;
             case "category":
-                sortOption.category = 1; // Category-wise sorting
+                sortOption = { category: 1 }; // Category-wise sorting
                 break;
             default:
                 break; // Default sorting by createdAt (newest first)
@@ -193,6 +193,43 @@ const updateProduct = asyncHandler(async (req, res) => {
     }
 });
 
+// Update multiple product price 
+const updateMultipleProducts = asyncHandler(async (req, res) => {
+    try {
+        const { updates } = req.body; // Expecting an array of updates [{ id, fieldsToUpdate }]
+
+        if (!Array.isArray(updates) || updates.length === 0) {
+            return res.status(400).json({
+                message: 'No updates provided or invalid format',
+                type: 'error',
+            });
+        }
+
+        // Prepare bulk operations
+        const bulkOps = updates.map(({ id, ...fieldsToUpdate }) => ({
+            updateOne: {
+                filter: { _id: id },
+                update: { $set: fieldsToUpdate },
+            },
+        }));
+
+        // Execute bulk write
+        const result = await Product.bulkWrite(bulkOps);
+
+        return res.status(200).json({
+            message: 'Products updated successfully',
+            type: 'success',
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to update products',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
+
 // Delete Product (by ID or all)
 const deleteProduct = asyncHandler(async (req, res) => {
     try {
@@ -237,5 +274,6 @@ module.exports = {
     addProduct,
     getProduct,
     updateProduct,
+    updateMultipleProducts,
     deleteProduct
 };

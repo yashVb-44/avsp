@@ -576,10 +576,52 @@ const vendorDetails = asyncHandler(async (req, res) => {
     }
 });
 
+const deActiveVendorAccount = async (req, res) => {
+    try {
+        const { id } = req.user
+        let vendor = await Vendor.findById(id);
+        vendor.isActive = false
+        await vendor.save()
+
+        res.status(200).json({
+            type: 'success',
+            message: 'account deactivated successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error for deactivate account',
+            error: error.message
+        });
+    }
+}
+
+const deleteVendorAccount = async (req, res) => {
+    try {
+        const { id } = req.user
+        let vendor = await Vendor.findById(id);
+        vendor.isDeleted = true
+        await vendor.save()
+
+        res.status(200).json({
+            type: 'success',
+            message: 'account deleted successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error for delete account',
+            error: error.message
+        });
+    }
+}
+
 
 module.exports = {
     getVendorProfile,
     updateVendorProfile,
     filterVendors,
-    vendorDetails
+    vendorDetails,
+    deleteVendorAccount,
+    deActiveVendorAccount
 };

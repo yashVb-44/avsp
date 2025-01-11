@@ -45,6 +45,14 @@ const purchaseInvoiceSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    discountAmount: {
+        type: Number,
+        default: 0
+    },
+    labourCharges: {
+        type: Number,
+        default: 0
+    },
     remainingAmount: {
         type: Number,
         default: 0

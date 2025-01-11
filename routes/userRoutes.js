@@ -1,7 +1,7 @@
 // routes/userRoutes.js
 const express = require('express');
 const { register, verifyOtp, sendOtp } = require('../controllers/authController');
-const { updateUserProfile, getUserProfile, getUserListWithMobileNo, addUserByVendor, getUsersForAdmin, deleteUser } = require('../controllers/userController');
+const { updateUserProfile, getUserProfile, getUserListWithMobileNo, addUserByVendor, getUsersForAdmin, deleteUser, deActiveUserAccount, deleteUserAccount } = require('../controllers/userController');
 const { authenticateAndAuthorize } = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -15,5 +15,7 @@ router.get('/list/forAdmin', authenticateAndAuthorize(['admin']), getUsersForAdm
 router.put('/profile/:id?', authenticateAndAuthorize(['user', 'admin']), updateUserProfile);
 router.get('/details/:id', authenticateAndAuthorize(['user', 'admin']), updateUserProfile);
 router.delete('/byAdmin/:id', authenticateAndAuthorize(['admin']), deleteUser);
+router.post('/account/deActivate', authenticateAndAuthorize(['user']), deActiveUserAccount);
+router.delete('/account/delete', authenticateAndAuthorize(['user']), deleteUserAccount);
 
 module.exports = router;

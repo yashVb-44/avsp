@@ -267,6 +267,45 @@ const deleteUser = async (req, res) => {
     }
 }
 
+const deActiveUserAccount = async (req, res) => {
+    try {
+        const { id } = req.user
+        let user = await User.findById(id);
+        user.isActive = false
+        await user.save()
+
+        res.status(200).json({
+            type: 'success',
+            message: 'account deactivated successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error for deactivate account',
+            error: error.message
+        });
+    }
+}
+
+const deleteUserAccount = async (req, res) => {
+    try {
+        const { id } = req.user
+        let user = await User.findById(id);
+        user.isDeleted = true
+        await user.save()
+
+        res.status(200).json({
+            type: 'success',
+            message: 'account deleted successfully',
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error for delete account',
+            error: error.message
+        });
+    }
+}
 
 
 module.exports = {
@@ -275,5 +314,7 @@ module.exports = {
     getUserListWithMobileNo,
     addUserByVendor,
     getUsersForAdmin,
-    deleteUser
+    deleteUser,
+    deActiveUserAccount,
+    deleteUserAccount
 };

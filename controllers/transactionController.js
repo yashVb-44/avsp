@@ -88,6 +88,8 @@ const getVendorAllTransaction = expressAsyncHandler(async (req, res) => {
         const transactions = await Transaction.find({ owner: vendor.id })
             .populate("invoiceId") // Populate invoiceId
             .populate("customer")  // Populate customer
+            .populate("expenseId")
+            .populate("expenseCategory")
             .sort({ createdAt: -1 })
             .skip(skip) // Skip records for pagination
             .limit(limit); // Limit the number of records per page
@@ -140,7 +142,7 @@ const getVendorTransactionDetails = expressAsyncHandler(async (req, res) => {
         const transaction = await Transaction.findOne({
             _id: transactionId,
             owner: vendor.id,
-        }).populate("customer").populate("invoiceId");
+        }).populate("customer").populate("invoiceId").populate("expenseId").populate("expenseCategory")
 
         if (!transaction) {
             return res.status(404).json({
@@ -227,6 +229,8 @@ const getAllTransactionWithFilter = expressAsyncHandler(async (req, res) => {
         const transactions = await Transaction.find(query)
             .populate("invoiceId")
             .populate("customer")
+            .populate("expenseId")
+            .populate("expenseCategory")
             .sort({ createdAt: -1 }); // Sort by most recent first
 
         // Send response
@@ -267,6 +271,8 @@ const getPartyTransactionsByVendor = expressAsyncHandler(async (req, res) => {
         })
             .populate("invoiceId")
             .populate("customer")
+            .populate("expenseId")
+            .populate("expenseCategory")
             .sort({ createdAt: -1 });
 
         return res.status(200).json({

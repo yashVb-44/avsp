@@ -345,6 +345,7 @@ const getJobcardListWithFilter = async (req, res) => {
         // Build the query filter
         const filter = {
             vendor: id,
+            status: { $in: [5, 6, 8, 9] }
         };
 
         // Add date filter if start and end dates are provided
@@ -500,7 +501,7 @@ const cancelBooking = async (req, res) => {
     try {
         const { id } = req.user;
         const { bookingId } = req.params;
-        const { cancellationReason } = req.body;
+        const { cancellationReason, cancelledByUserDate } = req.body;
 
         // Validate cancellation reason
         if (!cancellationReason || cancellationReason.trim() === "") {
@@ -522,6 +523,7 @@ const cancelBooking = async (req, res) => {
         // Update booking status and add cancellation reason
         booking.status = '9';
         booking.reason = cancellationReason;
+        booking.cancelledByUserDate = cancelledByUserDate;
 
         await booking.save(); // Save the updated booking
 
@@ -582,7 +584,7 @@ const declineBooking = async (req, res) => {
     try {
         const { id } = req.user;
         const { bookingId } = req.params;
-        const { declineReason } = req.body;
+        const { declineReason, cancelledByVendorDate } = req.body;
 
         // Validate cancellation reason
         if (!declineReason || declineReason.trim() === "") {
@@ -605,6 +607,7 @@ const declineBooking = async (req, res) => {
         // Update booking status and add cancellation reason
         booking.status = '5';
         booking.reason = declineReason;
+        booking.cancelledByVendorDate = cancelledByVendorDate;
 
         await booking.save(); // Save the updated booking
 

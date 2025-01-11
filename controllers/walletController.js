@@ -391,8 +391,9 @@ const updateParty = async (req, res) => {
       });
     }
 
-    if (updates.customerModel === "TempVendor") {
-      const tempVendor = await TempVendor.findById(id)
+    const tempVendor = await TempVendor.findById(id)
+
+    if (tempVendor) {
       const { name, ...otherUpdates } = updates;
       Object.assign(tempVendor, otherUpdates)
       await tempVendor.save()
