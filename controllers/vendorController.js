@@ -87,6 +87,10 @@ const updateVendorProfile = [
             if (dateOfBirth) vendor.dateOfBirth = dateOfBirth;
             if (serviceType) vendor.serviceType = serviceType;
 
+            if (req.user.role === 'admin') {
+                Object.assign(vendor, req.body);
+            }
+
             // Update profile image if provided
             if (req.file) {
                 vendor.profileImage = req.file.path;
@@ -576,6 +580,72 @@ const vendorDetails = asyncHandler(async (req, res) => {
     }
 });
 
+const getVendorsForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        // Build search query based on name, email, or mobile number
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                    { email: regex },
+                    { mobileNo: regex }
+                ]
+            };
+        }
+
+        const totalVendors = await Vendor.countDocuments(searchQuery);
+
+        let vendors = await Vendor.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        vendors = vendors.map((vendor) => {
+            let serviceTypeName = "";
+            if (vendor.serviceType === "1") {
+                serviceTypeName = "2 wheeler";
+            } else if (vendor.serviceType === "2") {
+                serviceTypeName = "3 wheeler";
+            } else if (vendor.serviceType === "3") {
+                serviceTypeName = "4 wheeler";
+            } else if (vendor.serviceType === "4") {
+                serviceTypeName = "Heavy Vehicle"; // Fixed spelling
+            }
+            return {
+                ...vendor.toObject(), // Ensure we return a plain object
+                serviceTypeName,
+                profileImage: ganerateOneLineImageUrls(vendor.profileImage, req)
+            };
+        });
+
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Vendor list retrieved successfully',
+            totalVendors,
+            totalPages: Math.ceil(totalVendors / limitNumber),
+            currentPage: pageNumber,
+            vendors,
+        });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching vendor list',
+            error: error.message
+        });
+    }
+};
+
 const deActiveVendorAccount = async (req, res) => {
     try {
         const { id } = req.user
@@ -622,6 +692,7 @@ module.exports = {
     updateVendorProfile,
     filterVendors,
     vendorDetails,
+    getVendorsForAdmin,
     deleteVendorAccount,
     deActiveVendorAccount
 };

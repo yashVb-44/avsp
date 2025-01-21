@@ -13,7 +13,7 @@ router.get('/profile/:id?', authenticateAndAuthorize(['user', 'admin']), getUser
 router.get('/list/byMobileNo', authenticateAndAuthorize(['vendor', 'admin']), getUserListWithMobileNo);
 router.get('/list/forAdmin', authenticateAndAuthorize(['admin']), getUsersForAdmin);
 router.put('/profile/:id?', authenticateAndAuthorize(['user', 'admin']), updateUserProfile);
-router.get('/details/:id', authenticateAndAuthorize(['user', 'admin']), updateUserProfile);
+router.get('/details/:id', authenticateAndAuthorize(['user', 'admin']), getUserProfile);
 router.delete('/byAdmin/:id', authenticateAndAuthorize(['admin']), deleteUser);
 router.post('/account/deActivate', authenticateAndAuthorize(['user']), deActiveUserAccount);
 router.delete('/account/delete', authenticateAndAuthorize(['user']), deleteUserAccount);

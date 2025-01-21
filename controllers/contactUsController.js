@@ -64,6 +64,76 @@ const getContactUs = asyncHandler(async (req, res) => {
     }
 });
 
+// Get Services for Admin
+const getContactUsForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        // Build search query based on name, email, or mobile number
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    // { message: regex },
+                    { subject: regex },
+                    { name: regex },
+                    { mobileNo: regex },
+                ]
+            };
+        }
+
+        // Calculate total services matching the query
+        const totalSupportData = await ContactUs.countDocuments(searchQuery);
+
+
+        let supportData = await ContactUs.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        supportData = supportData.map((status) => {
+            let statusTypeName = "";
+            if (status.status === "0") {
+                statusTypeName = "Pending";
+            } else if (status.status === "1") {
+                statusTypeName = "Approved";
+            } else if (status.status === "2") {
+                statusTypeName = "Rejected";
+            } else if (status.status === "3") {
+                statusTypeName = "Ongoing";
+            } else if (status.status === "4") {
+                statusTypeName = "Completed";
+            }
+            return {
+                ...status.toObject(), // Ensure we return a plain object
+                statusTypeName
+            };
+        });
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'data list retrieved successfully',
+            totalSupportData,
+            totalPages: Math.ceil(totalSupportData / limitNumber),
+            currentPage: pageNumber,
+            supportData,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching data list',
+            error: error.message
+        });
+    }
+};
+
+
 // Update Contact Inquiry Status
 const updateContactUs = asyncHandler(async (req, res) => {
     try {
@@ -140,5 +210,6 @@ module.exports = {
     addContactUs,
     getContactUs,
     updateContactUs,
-    deleteContactUs
+    deleteContactUs,
+    getContactUsForAdmin
 };

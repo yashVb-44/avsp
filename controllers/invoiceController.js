@@ -56,8 +56,10 @@ const generateInvoiceHTML = async (req, res) => {
   try {
     // Find the invoice by ID
     const vendorId = req?.user?.id
+    console.log(vendorId)
     const { id } = req.params;
     const saleInvoice = await SaleInvoice.findById(id).populate('to from productWithPrice.productId invoice');
+    const purchaseInvoice = await PurchaseInvoice.findById(id).populate('to from productWithPrice.productId invoice');
     let booking = await Booking.findById(id)
       .populate('user') // Populate user details
       .populate('vendor') // Populate vendor details
@@ -69,11 +71,11 @@ const generateInvoiceHTML = async (req, res) => {
       .populate('SubMechanic')
 
 
-    if (!saleInvoice && !booking) {
+    if (!saleInvoice && !booking && !purchaseInvoice) {
       return res.status(404).send("Invoice not found");
     }
 
-    const garage = await Garage.findOne({ vendorId })
+    const garage = await Garage.findOne({ vendor: vendorId })
     let htmlContent = ''
     let invoiceStyle = `
 <style>
@@ -122,7 +124,7 @@ const generateInvoiceHTML = async (req, res) => {
       </style>`
 
     if (saleInvoice) {
-      const { invoice, type, to, from, productWithPrice, subTotal, remainingAmount, isPaid, date } = saleInvoice;
+      const { invoice, type, to, from, productWithPrice, subTotal, remainingAmount, isPaid, date, discountAmount, labourCharges } = saleInvoice;
       htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -174,6 +176,15 @@ const generateInvoiceHTML = async (req, res) => {
                 <td class="text-right">${item.price}</td>
                 <td class="text-right">${item.price * item.quantity}</td>
               </tr>`).join('')}
+              <tr class="total-row">
+              <td colspan="3" class="text-right">Labour Charges (INR):</td>
+              <td class="text-right">₹${labourCharges}</td>
+            </tr>
+                 ${discountAmount > 0 ? `
+          <tr class="total-row">
+            <td colspan="3" class="text-right">Discount:</td>
+            <td class="text-right">-₹${discountAmount}</td>
+          </tr>` : ''}
             <tr class="total-row">
               <td colspan="3" class="text-right">Total:</td>
               <td class="text-right">₹${subTotal}</td>
@@ -186,7 +197,81 @@ const generateInvoiceHTML = async (req, res) => {
   `;
     }
 
-    if (booking) {
+    else if (purchaseInvoice) {
+      const { invoice, type, to, from, productWithPrice, subTotal, remainingAmount, isPaid, date, discountAmount, labourCharges } = purchaseInvoice;
+      htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Invoice</title>
+      ${invoiceStyle}
+    </head>
+    <body>
+      <div class="invoice-box">
+        <table class="info-table">
+          <tr>
+            <td class="title">
+              ${garage?.name ? garage.name : 'N/A'}
+            </td>
+            <td class="text-right">
+              Invoice : ${invoice ? invoice.invoiceCode : 'N/A'}<br>
+              Created: ${new Date(invoice?.createdAt).toLocaleDateString()}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <strong>From:</strong> ${from ? from.name : 'N/A'}<br>
+              ${from ? from.email : 'N/A'}<br>
+              ${garage ? garage.address : 'N/A'}
+            </td>
+            <td class="text-right">
+              <strong>To:</strong> ${to ? to.name : 'Customer Name'}<br>
+              ${to ? to.mobileNo : 'xxxxxxxxxx'}
+            </td>
+          </tr>
+        </table>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Price (₹)</th>
+              <th>Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${productWithPrice.map(item => `
+              <tr>
+                <td>${item.productName || 'Unnamed Product'}</td>
+                <td>${item.quantity}</td>
+                <td class="text-right">${item.price}</td>
+                <td class="text-right">${item.price * item.quantity}</td>
+              </tr>`).join('')}
+              <tr class="total-row">
+              <td colspan="3" class="text-right">Labour Charges (INR):</td>
+              <td class="text-right">₹${labourCharges}</td>
+            </tr>
+               ${discountAmount > 0 ? `
+          <tr class="total-row">
+            <td colspan="3" class="text-right">Discount:</td>
+            <td class="text-right">-₹${discountAmount}</td>
+          </tr>` : ''}
+            <tr class="total-row">
+              <td colspan="3" class="text-right">Total:</td>
+              <td class="text-right">₹${subTotal}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </body>
+    </html>
+  `;
+    }
+
+    else if (booking) {
       const {
         invoice,
         user,
@@ -289,16 +374,16 @@ const generateInvoiceHTML = async (req, res) => {
                 <td class="text-right">${item.labourCharges || 0}</td>
                 <td class="text-right">${item.price}</td>
               </tr>`).join('')}
-            ${dropOffCharge > 0 && `
+            ${dropOffCharge > 0 ? `
           <tr class="total-row">
             <td colspan="4" class="text-right">Drop Charge:</td>
             <td class="text-right">₹${dropOffCharge}</td>
-          </tr>`}
-             ${pickUpCharge > 0 && `
+          </tr>` : ''}
+             ${pickUpCharge > 0 ? `
           <tr class="total-row">
             <td colspan="4" class="text-right">Pick Up Charge:</td>
             <td class="text-right">₹${pickUpCharge}</td>
-          </tr>`}
+          </tr>` : ''}
             <tr class="total-row">
               <td colspan="4" class="text-right">Labour Charges (INR):</td>
               <td class="text-right">₹${labourCharges}</td>
@@ -307,16 +392,16 @@ const generateInvoiceHTML = async (req, res) => {
               <td colspan="4" class="text-right">Estimated Cost:</td>
               <td class="text-right">₹${estimatedCost}</td>
             </tr>
-            ${discountAmount > 0 && `
+            ${discountAmount > 0 ? `
           <tr class="total-row">
             <td colspan="4" class="text-right">Discount:</td>
             <td class="text-right">-₹${discountAmount}</td>
-          </tr>`}
-            ${payableAmount > 0 && `
+          </tr>` : ''}
+            ${payableAmount > 0 ? `
           <tr class="total-row">  
             <td colspan="4" class="text-right">Payable Amount:</td>
             <td class="text-right">₹${payableAmount}</td>
-          </tr>`}
+          </tr>` : ''}
           </tbody>
         </table>
       </div>

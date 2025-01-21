@@ -49,6 +49,50 @@ const getAllVideos = expressAsyncHandler(async (req, res) => {
     }
 });
 
+const getVideoLibraryForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { link: regex },
+                    { title: regex },
+                ]
+            };
+        }
+
+        const totalVideos = await VideoLibrary.countDocuments(searchQuery);
+
+        let videos = await VideoLibrary.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Videos list retrieved successfully',
+            totalVideos,
+            totalPages: Math.ceil(totalVideos / limitNumber),
+            currentPage: pageNumber,
+            videos,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching videos list',
+            error: error.message
+        });
+    }
+};
+
 // Controller to update a video by ID
 const updateVideo = expressAsyncHandler(async (req, res) => {
     try {
@@ -114,5 +158,6 @@ module.exports = {
     addVideo,
     getAllVideos,
     updateVideo,
-    deleteVideo
+    deleteVideo,
+    getVideoLibraryForAdmin
 };

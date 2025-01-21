@@ -2,7 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Banner = require('../models/banner');
 const upload = require('../config/mutler');
 const removeUnwantedImages = require('../utils/deletingFiles');
-const { generateImageUrls } = require('../utils/utils');
+const { generateImageUrls, ganerateOneLineImageUrls } = require('../utils/utils');
 
 // Add Banner
 const addBanner = [
@@ -86,6 +86,68 @@ const getBanners = asyncHandler(async (req, res) => {
     }
 });
 
+const getBannerForAdmin = async (req, res) => {
+    try {
+        const { search, page = 1, limit = 10 } = req.query; // Get search term, page, and limit from query parameters
+
+        // Ensure page and limit are valid integers
+        const pageNumber = parseInt(page) || 1;
+        const limitNumber = parseInt(limit) || 10;
+
+        // Build search query based on name, email, or mobile number
+        let searchQuery = {};
+        if (search && search.trim() !== '') {
+            const regex = new RegExp(search.trim(), 'i'); // Case-insensitive partial match
+            searchQuery = {
+                $or: [
+                    { name: regex },
+                ]
+            };
+        }
+
+        // Calculate total banners matching the query
+        const totalBanners = await Banner.countDocuments(searchQuery);
+
+        // Fetch paginated banners from the database
+        let banners = await Banner.find(searchQuery)
+            .skip((pageNumber - 1) * limitNumber)
+            .limit(limitNumber)
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        banners = banners.map((banner) => {
+            let toShow = "";
+            if (banner.type === "0") {
+                toShow = "User";
+            } else if (banner.type === "1") {
+                toShow = "Vendor";
+            } else if (banner.type === "2") {
+                toShow = "All";
+            }
+            return {
+                ...banner.toObject(), // Ensure we return a plain object
+                toShow,
+                image: ganerateOneLineImageUrls(banner.image, req)
+            };
+        });
+
+        // Send response
+        res.status(200).json({
+            type: 'success',
+            message: 'Banner list retrieved successfully',
+            totalBanners,
+            totalPages: Math.ceil(totalBanners / limitNumber),
+            currentPage: pageNumber,
+            banners,
+        });
+    } catch (error) {
+        res.status(500).json({
+            type: 'error',
+            message: 'Error fetching user list',
+            error: error.message
+        });
+    }
+};
+
 // Update Banner
 const updateBanner = [
     upload.single('bannerImage'),
@@ -153,18 +215,10 @@ const deleteBanner = asyncHandler(async (req, res) => {
                 });
             }
 
-            // Check if the banner belongs to the user or if the user is an admin
-            if (banner.userId.toString() !== userId && !isAdmin) {
-                return res.status(403).json({
-                    message: 'Forbidden',
-                    type: 'error',
-                });
-            }
-
             if (banner.image) {
                 removeUnwantedImages([banner.image]);
             }
-            await banner.remove();
+            await Banner.findByIdAndDelete(id)
 
             return res.status(200).json({
                 message: 'Banner deleted successfully',
@@ -221,6 +275,7 @@ const deleteBanner = asyncHandler(async (req, res) => {
 module.exports = {
     addBanner,
     getBanners,
+    getBannerForAdmin,
     updateBanner,
     deleteBanner,
 };

@@ -16,6 +16,9 @@ const contactUsSchema = new mongoose.Schema({
     message: {
         type: String,
     },
+    response: {
+        type: String
+    },
     type: {
         type: String,
         enum: ["0", "1"], // 0 = user , 1 = vendor
@@ -26,7 +29,7 @@ const contactUsSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        default: "0"
+        default: "0" // 0 = pending, 1 = approved, 2 = rejected  , 3 = ongoing, 4 = completed 
     },
     customerModel: {
         type: String,

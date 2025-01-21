@@ -71,11 +71,11 @@ const transactionSchema = mongoose.Schema({
     },
     expenseId: {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'Expense',
+        ref: 'Expense',
     },
     expenseCategory: {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'ExpenseCategory',
+        ref: 'ExpenseCategory',
     },
     note: String
 }, {

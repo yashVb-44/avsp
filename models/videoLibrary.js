@@ -7,8 +7,8 @@ const videoLibrarySchema = new mongoose.Schema({
     text: {
         type: String
     },
-    link : {
-        type : String
+    link: {
+        type: String
     },
     isActive: {
         type: Boolean,

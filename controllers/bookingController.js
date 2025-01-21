@@ -357,7 +357,8 @@ const getJobcardListWithFilter = async (req, res) => {
 
         // Add type filter for bookingType
         if (type) {
-            const bookingTypes = type.split(',').map(t => t.trim());
+            // const bookingTypes = type.split(',').map(t => t.trim());
+            const bookingTypes = type === "0" ? [0, 1, 2] : type === "1" ? [0, 2] : [1];
             filter.bookingType = { $in: bookingTypes };
         }
 

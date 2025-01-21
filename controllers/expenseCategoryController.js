@@ -73,8 +73,8 @@ const getExpenseCategory = asyncHandler(async (req, res) => {
                 ? await ExpenseCategory.find()
                 : await ExpenseCategory.find({
                     $or: [
-                        { isDeleted: true, vendor: userId },
-                        { isDeleted: true, isActive: true, createdBy: 'admin' },
+                        { isDeleted: false, vendor: userId },
+                        { isDeleted: false, isActive: true, createdBy: 'admin' },
                     ],
                 });
         }
