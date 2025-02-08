@@ -98,6 +98,34 @@ const sendOtp = asyncHandler(async (req, res) => {
             });
         }
 
+        if (account.isDeleted) {
+            return res.status(400).json({
+                message: 'This account is deleted. Please contact support.',
+                type: 'error',
+            });
+        }
+
+        if (!account.isActive) {
+            return res.status(400).json({
+                message: 'This account is not active. Please contact support.',
+                type: 'error',
+            });
+        }
+
+        if (account.isBlocked) {
+            return res.status(400).json({
+                message: 'This account is blocked. Please contact support.',
+                type: 'error',
+            });
+        }
+
+        if (!account.isVerified) {
+            return res.status(400).json({
+                message: 'This account is not verified. Please complete verification.',
+                type: 'error',
+            });
+        }
+
         // Set OTP expiration time
         const otpExpiresAt = Date.now() + OTP_EXPIRATION_TIME;
 

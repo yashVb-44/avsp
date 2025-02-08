@@ -7,6 +7,8 @@ const subscriptionPlanSchema = new mongoose.Schema(
         description: { type: String }, // Description of the plan (optional)
         monthlyPrice: { type: Number, default: 0 },    // Monthly price of the plan
         yearlyPrice: { type: Number, default: 0 },
+        oneYearDiscount: { type: Number, default: 0 },
+        twoYearDiscount: { type: Number, default: 0 },
         validityPeriod: {
             monthly: { type: Number, default: 1 },           // Validity of monthly subscription in months
             yearly: { type: Number, default: 12 }            // Validity of yearly subscription in months

@@ -12,7 +12,6 @@ const myVehicleSchema = new mongoose.Schema({
     },
     number: {
         type: String,
-        unique: true,
     },
     brand: {
         type: String,

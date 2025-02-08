@@ -89,6 +89,9 @@ const garageSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
     },
+    bankName: String,
+    ifsc: String,
+    accountNumber: String
 }, {
     timestamps: true,
 });

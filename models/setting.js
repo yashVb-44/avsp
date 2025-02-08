@@ -38,6 +38,10 @@ const SettingSchema = new mongoose.Schema({
     contact: {
         type: String,
         default: ''
+    },
+    invoiceTerms: {
+        type: String,
+        default: ''
     }
 }, {
     timestamps: true

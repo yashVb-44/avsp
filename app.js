@@ -15,6 +15,7 @@ express.urlencoded({ extended: true })
 app.use(bodyParser.json())
 app.use(express.static(path.join(__dirname, '../admin/build')));
 app.use("/uploads", express.static("uploads"));
+app.use('/images', express.static('images'));
 app.use(errorHandler);
 
 app.get('*', (req, res) => {

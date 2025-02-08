@@ -13,7 +13,7 @@ const { addTransaction, SaleAndPurchaseTransaction } = require('../utils/transac
 const { generateInvoiceCode } = require('../utils/invoice');
 const { updateProductStock } = require('../utils/product');
 const { checkRatingForBooking } = require('../utils/rating');
-// const MyVehicle = require('../models/MyVehicle');
+const MyVehicle = require('../models/myVehicle');
 // const Vendor = require('../models/Vendor');
 const User = require('../models/user');
 
@@ -374,9 +374,21 @@ const getJobcardListWithFilter = async (req, res) => {
             // Collect the user ids that match the search query
             const userIds = users.map(user => user._id);
 
+            const vehicles = await MyVehicle.find({
+                number: { $regex: search, $options: "i" },
+            });
+
+            const vehicleIds = vehicles.map((vehicle) => vehicle._id);
+
             // Modify the filter to only include bookings related to these users
-            if (userIds.length > 0) {
-                filter.user = { $in: userIds };
+            if (userIds.length > 0 || vehicleIds.length > 0) {
+                filter.$or = [];
+                if (userIds.length > 0) {
+                    filter.$or.push({ user: { $in: userIds } });
+                }
+                if (vehicleIds.length > 0) {
+                    filter.$or.push({ myVehicle: { $in: vehicleIds } });
+                }
             } else {
                 // If no users match, return an empty response or handle it as needed
                 return res.status(200).json({
@@ -723,14 +735,18 @@ const updateBooking = async (req, res) => {
                     return {
                         serviceId: servicePrice.shopService._id,
                         serviceName: servicePrice.shopService.name,
-                        price: servicePrice.price
+                        price: servicePrice.price,
+                        sac: servicePrice.sac,
+                        gst: servicePrice.gst
                     };
                 } else {
                     const serviceDetails = await ShopService.findById(serviceId);
                     return {
                         serviceId: serviceDetails._id,
                         serviceName: serviceDetails.name,
-                        price: 0
+                        price: 0,
+                        sac: servicePrice.sac,
+                        gst: servicePrice.gst
                     };
                 }
             }));

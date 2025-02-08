@@ -73,7 +73,7 @@ const addRemoveAmountFromWallet = async ({ ownerModel, customerModel, amountType
                     amount: amountType === "1" ? amount : -amount,
                     customer,
                     virtualAmount: amountType === "1" ? amount : -amount,
-                    name: user.name
+                    name: user?.name
                 });
             }
         } else if (customerModel === "TempVendor") {

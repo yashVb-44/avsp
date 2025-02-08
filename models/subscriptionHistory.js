@@ -12,6 +12,9 @@ const subscriptionHistorySchema = new mongoose.Schema(
             ref: "SubscriptionPlan",
             required: true,
         }, // Reference to the Subscription Plan
+        planDetails: {
+            type: Object
+        },
         purchaseDate: { type: Date, default: Date.now }, // Date when the subscription was purchased
         startDate: { type: Date, required: true }, // Subscription start date
         endDate: { type: Date, required: true }, // Subscription end date
@@ -19,6 +22,10 @@ const subscriptionHistorySchema = new mongoose.Schema(
         autoRenew: { type: Boolean, default: false }, // Auto-renewal option
         renewalCount: { type: Number, default: 0 }, // Tracks the number of renewals
         amountPaid: { type: Number, required: true }, // Amount paid for the subscription
+        additional: {
+            type: Number,
+            default: 0
+        },
         paymentMethod: {
             type: String,
             enum: ["Credit Card", "PayPal", "Bank Transfer"],

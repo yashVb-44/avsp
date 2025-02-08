@@ -1,5 +1,7 @@
 const expressAsyncHandler = require("express-async-handler");
 const Booking = require("../models/booking");
+const Vendor = require("../models/vendor");
+const User = require("../models/user");
 const Transaction = require("../models/transaction");
 const { default: mongoose } = require("mongoose");
 
@@ -147,11 +149,103 @@ const getTodayStats = expressAsyncHandler(async (req, res) => {
     }
 });
 
-module.exports = {
-    getTodayStats
-};
+const getAdminDashboardStats = expressAsyncHandler(async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
 
+        // IST offset in minutes (+5:30)
+        const IST_OFFSET = 330;
+
+        // Helper function to convert a date to start of day in IST
+        const toStartOfDayIST = (date) => {
+            const utcDate = new Date(date);
+            utcDate.setUTCHours(0, 0, 0, 0); // Set to start of UTC day
+            return new Date(utcDate.getTime() + IST_OFFSET * 60 * 1000); // Add IST offset
+        };
+
+        // Helper function to convert a date to end of day in IST
+        const toEndOfDayIST = (date) => {
+            const utcDate = new Date(date);
+            utcDate.setUTCHours(23, 59, 59, 999); // Set to end of UTC day
+            return new Date(utcDate.getTime() + IST_OFFSET * 60 * 1000); // Add IST offset
+        };
+
+        // Parse startDate and endDate, or use default for all-time stats
+        const start = startDate ? toStartOfDayIST(startDate) : null;
+        const end = endDate ? toEndOfDayIST(endDate) : null;
+
+        // Add filters for createdAt with adjusted IST times
+        const dateFilter = {};
+        if (start && end) {
+            dateFilter.createdAt = { $gte: start, $lte: end };
+        } else if (start) {
+            dateFilter.createdAt = { $gte: start };
+        } else if (end) {
+            dateFilter.createdAt = { $lte: end };
+        }
+
+        // Total Vendors
+        const totalVendors = await Vendor.find(dateFilter).countDocuments();
+
+        // Total Users
+        const totalUsers = await User.find(dateFilter).countDocuments();
+
+        // Total Bookings
+        const totalBookings = await Booking.find(dateFilter).countDocuments();
+
+        // Total Completed Bookings
+        const totalCompletedBookings = await Booking.find({
+            ...dateFilter,
+            status: "completed",
+        }).countDocuments();
+
+        // Total Transactions (Earnings)
+        const transactions = await Transaction.aggregate([
+            {
+                $match: {
+                    ...dateFilter,
+                    amountType: "1", // Received amount
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalEarnings: { $sum: "$addOnAmount" },
+                    totalAmountReceived: { $sum: "$amount" },
+                    totalTransactions: { $sum: "$totalAmount" },
+                },
+            },
+        ]);
+
+        const totalEarnings = transactions[0]?.totalEarnings || 0;
+        const totalAmountReceived = transactions[0]?.totalAmountReceived || 0;
+        const totalTransactions = transactions[0]?.totalTransactions || 0;
+
+        // Respond with admin stats
+        return res.status(200).json({
+            message: "Admin statistics retrieved successfully",
+            type: "success",
+            stats: {
+                totalVendors,
+                totalUsers,
+                totalBookings,
+                totalCompletedBookings,
+                totalEarnings,
+                totalAmountReceived,
+                totalTransactions,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to retrieve admin statistics",
+            error: error.message,
+            type: "error",
+        });
+    }
+});
 
 module.exports = {
-    getTodayStats
+    getTodayStats,
+    getAdminDashboardStats
 };

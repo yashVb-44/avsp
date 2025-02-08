@@ -91,6 +91,7 @@
                         3 = sale return 
                         4 = purchase 
                         5 = purchase return 
+                        6 = counter sale return
 
 ** table -> (sale invoice) 
 => type  ->             0= sale

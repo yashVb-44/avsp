@@ -67,6 +67,7 @@ const getServices = asyncHandler(async (req, res) => {
             const vendor = await Vendor.findById(userId);
             services = await ShopService.find({
                 serviceType: vendor.serviceType,
+                isShow: true,
                 $or: [
                     { visibility: 'all_vendors' },
                     { createdBy: userId, visibility: 'creator_only' }
@@ -74,7 +75,7 @@ const getServices = asyncHandler(async (req, res) => {
             });
         } else if (role === 'user') {
             services = await ShopService.find(
-                { createdBy: userId, visibility: 'creator_only' }
+                { createdBy: userId, visibility: 'creator_only', isShow: true }
             );
         } else {
             return res.status(403).json({

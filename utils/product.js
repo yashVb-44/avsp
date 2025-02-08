@@ -32,7 +32,8 @@ const updateProductStock = async ({
                     "salePrice": price,
                     "vendor": vendorId,
                     // "purchasePrice": price,
-                    "stock": foundProduct.stock - quantity,
+                    // "stock": foundProduct.stock - quantity,
+                    "stock": foundProduct.stock,
                     "unitType": foundProduct.unitType,
                     "unit": quantity,
                     "invoiceId": invoiceId

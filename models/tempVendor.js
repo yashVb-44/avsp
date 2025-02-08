@@ -35,7 +35,8 @@ const tempVendorSchema = mongoose.Schema({
     accountNumber: String,
     ifscCode: String,
     branchName: String,
-    branchAddress: String
+    branchAddress: String,
+    accountHolderName: String
 }, {
     timestamps: true,
 });
