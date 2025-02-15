@@ -10,6 +10,7 @@ const AdditionalService = require('../models/additionalService');
 const EmeregencyService = require('../models/emeregencyService');
 const ServiceRate = require('../models/serviceRate');
 const { getVendorRatings } = require('../utils/rating');
+const SubscriptionHistory = require('../models/subscriptionHistory');
 
 
 // Get Vendor Profile
@@ -351,10 +352,10 @@ const filterVendors = asyncHandler(async (req, res) => {
         }
 
         // Parse dateTime from the body
-        const requestedDateTime = new Date(dateTime);
-        // const requestedDateTime = new Date();
-        const requestedDay = requestedDateTime.getDay();
-        const requestedTime = requestedDateTime.getHours() + (requestedDateTime.getMinutes() / 60);
+        const requestedDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+        const istDate = new Date(requestedDateTime)
+        let requestedDay = istDate.toLocaleString('en-US', { weekday: 'long' });
+        const requestedTime = istDate.getHours() + (istDate.getMinutes() / 60)
 
         // Find all garages and their corresponding vendors
         const garages = await Garage.find().populate('vendor');
@@ -380,12 +381,11 @@ const filterVendors = asyncHandler(async (req, res) => {
                 );
 
             // Check if the garage is open based on the weeklyTimings
-            const todayTimings = garage.weeklyTimings[requestedDay];
+            const todayTimings = garage.weeklyTimings.find(t => t.day === requestedDay);
             // Check if the search term matches the garage name (case-insensitive)
             const matchesSearch = search
                 ? garage.name.toLowerCase().includes(search.toLowerCase())
                 : true;
-
             // Return true if all conditions are met
             return isWithinRadius && isMechTypeMatching && hasMatchingService && todayTimings && matchesSearch;
         });
@@ -410,38 +410,49 @@ const filterVendors = asyncHandler(async (req, res) => {
                 { latitude: garage.lat || 21.1835897, longitude: garage.lng || 72.783059 }
             ) / 1000;
 
-            // Find next available opening time if the garage is closed today
-            let nextAvailableDay = requestedDay;
-            let nextOpeningTime = null;
-            let isOpen = false;
+            const todayTimings = garage.weeklyTimings.find(t => t.day === requestedDay);
+            let isOpen = false, nextOpeningTime = null, closingTime = null;
 
-            for (let i = 0; i < 7; i++) { // Loop through the next 7 days
-                const dayTimings = garage.weeklyTimings[nextAvailableDay % 7]; // Check timings for the next day
-                if (dayTimings && dayTimings.isAvailable) {
-                    console.log(dayTimings.startTime, requestedTime, dayTimings.endTime)
-                    // Garage is open, check if it's currently open or find the next opening time
-                    if (i === 0 && requestedTime >= dayTimings.startTime && requestedTime <= dayTimings.endTime) {
-                        // Garage is open today and within the open hours
-                        isOpen = true;
-                        nextOpeningTime = dayTimings.endTime;
-                    } else {
-                        // Garage is closed now but will open on this day
-                        nextOpeningTime = dayTimings.startTime;
-                    }
-                    break; // Exit loop once the next opening time is found
+            const convertTimeToDecimal = (timeStr) => {
+                if (timeStr) {
+                    const [hours, minutes] = timeStr?.split(":")?.map(Number);
+                    return hours + minutes / 60;
+                } else {
+                    return ""
                 }
-                nextAvailableDay++; // Move to the next day
+            };
+
+            // Convert DB startTime and endTime
+            const startTimeDecimal = convertTimeToDecimal(todayTimings.startTime);
+            const endTimeDecimal = convertTimeToDecimal(todayTimings.endTime);
+
+            if (todayTimings && todayTimings.isAvailable) {
+                if (requestedTime >= startTimeDecimal && requestedTime <= endTimeDecimal) {
+                    isOpen = true;
+                    closingTime = todayTimings.endTime;
+                } else if (requestedTime < startTimeDecimal) {
+                    nextOpeningTime = todayTimings?.startTime;
+                }
             }
 
-            // Convert startTime and endTime to AM/PM format
-            const startTimeFormatted = convertToAmPm(nextOpeningTime);
-            const endTimeFormatted = convertToAmPm(nextOpeningTime);
+            const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+            const requestedDayIndex = daysOfWeek.indexOf(requestedDay);
+            let nextAvailableDay = requestedDay;
+            if (!isOpen && !nextOpeningTime) {
+                for (let i = 1; i <= 7; i++) {
+                    nextAvailableDay = (requestedDayIndex + i) % 7;
+                    const nextTimings = garage.weeklyTimings[nextAvailableDay];
+                    if (nextTimings && nextTimings.isAvailable) {
+                        nextOpeningTime = nextTimings.startTime;
+                        break;
+                    }
+                }
+            }
 
             const status = isOpen
-                ? { status: 'Open', message: `Close ${endTimeFormatted}` }
-                : { status: 'Closed', message: `Open ${startTimeFormatted} on ${getDayName(nextAvailableDay % 7)}` };
+                ? { status: 'Open', message: `Closes at ${convertToAmPm(closingTime)}` }
+                : { status: 'Closed', message: `Opens at ${convertToAmPm(nextOpeningTime)} on ${getDayName(nextAvailableDay)}` };
 
-            // Fetch the outsideImage from the ShopGallery model
             const shopGallery = await ShopGallery.findOne({ vendor: garage.vendor._id }).select('outsideImage');
             let Image = shopGallery ? shopGallery.outsideImage : null;
             Image = ganerateOneLineImageUrls(Image, req);
@@ -686,6 +697,56 @@ const deleteVendorAccount = async (req, res) => {
     }
 }
 
+const getVendorSubscriptionDetails = asyncHandler(async (req, res) => {
+    try {
+        const vendorId = req.user.id;
+
+        // Check if vendor exists
+        const vendor = await Vendor.findById(vendorId);
+        if (!vendor) {
+            return res.status(404).json({
+                message: 'Vendor not found',
+                type: 'error',
+            });
+        }
+
+        // Fetch vendor's latest subscription history
+        const subscriptionHistory = await SubscriptionHistory.findOne({ vendorId })
+            .sort({ purchaseDate: -1 }); // Get the latest subscription
+
+        let isSubscriptionActive = false;
+        let currentActiveSubscription = null;
+
+        if (subscriptionHistory) {
+            // Get current date in IST (Indian Standard Time) and format it as DD-MM-YYYY
+            const nowIST = new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' });
+
+            // Convert subscription start and end dates to DD-MM-YYYY format
+            const startDateIST = subscriptionHistory.startDate;
+            const endDateIST = subscriptionHistory.endDate
+
+            // Compare formatted dates
+            if (nowIST >= startDateIST && nowIST <= endDateIST) {
+                isSubscriptionActive = true;
+                currentActiveSubscription = subscriptionHistory._id;
+            }
+        }
+
+        return res.status(200).json({
+            subscriptionHistory,
+            currentActiveSubscription,
+            isSubscriptionActive,
+            type: 'success',
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to retrieve vendor subscription details',
+            error: error.message,
+            type: 'error',
+        });
+    }
+});
+
 
 module.exports = {
     getVendorProfile,
@@ -694,5 +755,6 @@ module.exports = {
     vendorDetails,
     getVendorsForAdmin,
     deleteVendorAccount,
-    deActiveVendorAccount
+    deActiveVendorAccount,
+    getVendorSubscriptionDetails
 };

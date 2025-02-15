@@ -86,7 +86,9 @@ const addBooking = async (req, res) => {
                     serviceId: servicePrice.shopService._id,
                     serviceName: servicePrice.shopService.name,
                     price: servicePrice.price,
-                    labourCharges: 0
+                    labourCharges: 0,
+                    gst: servicePrice?.gst,
+                    sac: servicePrice?.sac
                 };
             } else {
                 // If service price not found, fallback to 0 price or handle this case as needed
@@ -203,6 +205,8 @@ const addBookingByVendor = async (req, res) => {
                         serviceName: servicePrice.shopService.name,
                         price: servicePrice.price,
                         labourCharges: 0,
+                        gst: servicePrice?.gst,
+                        sac: servicePrice?.sac
                     };
                 } else {
                     // If service price not found, fallback to 0 price or handle this case as needed

@@ -37,7 +37,7 @@ function convertToAmPm(time) {
 }
 
 function getDayName(dayIndex) {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const days = [ 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday'];
     return days[dayIndex];
 }
 

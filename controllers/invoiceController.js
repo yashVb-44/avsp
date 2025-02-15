@@ -222,18 +222,52 @@ async function generateBookingInvoice({ booking, garage, isWithTax }) {
   let subTotal = productWithPrice.reduce((sum, item) => sum + (item.price * item.quantity) + (item.labourCharges || 0), 0) +
     serviceWithPrice.reduce((sum, item) => sum + (item.price || 0) + (item.labourCharges || 0), 0);
 
-  let gstTotal = productWithPrice.reduce(
-    (sum, item) => sum + ((item.price * item.quantity * (item?.gst || 18)) / 100),
-    0
-  ) + serviceWithPrice.reduce(
-    (sum, item) => sum + (((item.price || 0) * (item?.gst || 18)) / 100),
-    0
-  );
+  let gstTotal =
+    productWithPrice.reduce((sum, item) => {
+      let price = Number(item.price);
+      let quantity = Number(item.quantity);
+      let gstRate = Number(item.gst || 0);
+
+      let subtotal = price * quantity;
+
+      // Correct GST calculation based on tax inclusion
+      let gstAmount = isWithTax
+        ? subtotal - (subtotal / (1 + gstRate / 100)) // Extract GST if tax-inclusive
+        : (subtotal * gstRate) / 100; // Apply GST if tax-exclusive
+
+      return sum + gstAmount;
+    }, 0) +
+    serviceWithPrice.reduce((sum, item) => {
+      let price = Number(item.price || 0);
+      let gstRate = Number(item.gst || 0);
+
+      // Correct GST calculation based on tax inclusion
+      let gstAmount = isWithTax
+        ? price - (price / (1 + gstRate / 100)) // Extract GST if tax-inclusive
+        : (price * gstRate) / 100; // Apply GST if tax-exclusive
+
+      return sum + gstAmount;
+    }, 0);
+
 
   let subtotal = isWithTax ? subTotal - gstTotal : subTotal
   // Calculate Grand Total
   let grandTotal = subTotal + labourCharges + dropOffCharge + pickUpCharge;
+  subtotal = subtotal.toFixed(2)
+  gstTotal = gstTotal.toFixed(2)
+  function calculateGST(price, quantity, gstRate) {
+    let subtotal = (Number(price) * Number(quantity));
+    let rate = ((subtotal) / (1 + (gstRate / 100)))
+    let gstAmount = subtotal - rate;
+    let totalAmount = subtotal + gstAmount;
 
+    return {
+      subtotal: subtotal.toFixed(2),
+      rate: rate.toFixed(2),
+      gstAmount: gstAmount.toFixed(2),
+      totalAmount: totalAmount.toFixed(2),
+    };
+  }
   // Convert Total Amount into Words
   let totalInWords = numberToWords.toWords(subtotal).toUpperCase() + " ONLY";
   let gstTotalInWords = numberToWords.toWords(gstTotal).toUpperCase() + " ONLY";
@@ -242,7 +276,7 @@ async function generateBookingInvoice({ booking, garage, isWithTax }) {
 
   const tableHead = isWithTax ? `<th style="width: 7%">Sr No.</th>
             <th style="width: 20%">Items</th>
-            <th style="width: 10%">HSN Code</th>
+            <th style="width: 15%">HSN/SAC Code</th>
             <th style="width: 8%">Qty</th>
             <th style="width: 12%">Rate (₹)</th>
             <th style="width: 8%">GST %</th>
@@ -379,10 +413,10 @@ async function generateBookingInvoice({ booking, garage, isWithTax }) {
               <tr class="remove-line text-center">
                 <td>${index + 1}</td>
                 <td>${item.productName || 'Unnamed Product'}</td>
-                ${isWithTax && `<td>${item?.hsn || 12345678}</td>`}
+                ${isWithTax && `<td>${item?.hsn || ""}</td>`}
                 <td>${item.quantity}</td>
-                <td class="text-right">${item.price}</td>
-                ${isWithTax && `<td>${item?.gst || 18}%</td>`}
+                <td class="text-right">${isWithTax ? calculateGST(item.price, 1, item?.gst || 0).rate : item.price}</td>
+                ${isWithTax && `<td>${item?.gst || 0}%</td>`}
                 <td class="text-right">${item.labourCharges || 0}</td>
                 <td class="text-right">${(item.price * item.quantity) + item.labourCharges}</td>
               </tr>`).join('')}
@@ -390,10 +424,10 @@ async function generateBookingInvoice({ booking, garage, isWithTax }) {
               <tr class="remove-line text-center">
                 <td>${productWithPrice.length + index + 1}</td>
                 <td>${item.serviceName || 'Unnamed Service'}</td>
-                ${isWithTax && `<td>${item?.sac || 12345678}</td>`}
+                ${isWithTax && `<td>${item?.sac || ""}</td>`}
                 <td>${1}</td>
-                <td class="text-right">${item.price}</td>
-                ${isWithTax && `<td>${item?.gst || 18}%</td>`}
+                <td class="text-right">${isWithTax ? calculateGST(item.price, 1, item?.gst || 0).rate : item.price}</td>
+                ${isWithTax && `<td>${item?.gst || 0}%</td>`}
                 <td class="text-right">${item.labourCharges || 0}</td>
                 <td class="text-right">${item.price + item.labourCharges}</td>
               </tr>`).join('')}
@@ -643,25 +677,51 @@ async function generateBookingInvoice({ booking, garage, isWithTax }) {
 
 }
 
-async function generateSalesInvoice({ saleInvoice, garage, isWithTax }) {
+async function generateSalesInvoice({ saleInvoice, garage, isWithTax, invoiceType }) {
   const { setting } = await getAllSettings()
   const { invoice, type, to, from, productWithPrice, subTotal, remainingAmount, isPaid, date, discountAmount, labourCharges } = saleInvoice;
   const userAddress = await Address.findOne({ user: to?._id }).select("address")
+  let InvoiceName = 'SALE'
+  switch (invoiceType) {
+    case "2":
+      InvoiceName = 'counter sale';
+      break;
+    case "3":
+      InvoiceName = 'sale return';
+      break;
+    case "6":
+      InvoiceName = 'counter return sale';
+      break;
+    default:
+      break;
+  }
+  let gstTotal = productWithPrice.reduce((sum, item) => {
+    let price = Number(item.price);
+    let quantity = Number(item.quantity);
+    let gstRate = Number(item.gst || 0);
 
-  let gstTotal = productWithPrice.reduce(
-    (sum, item) => sum + ((item.price * item.quantity * (item?.gst || 18)) / 100),
-    0
-  )
+    let subtotal = price * quantity;
+
+    // If price is tax-inclusive, extract GST correctly
+    let gstAmount = isWithTax ? subtotal - (subtotal / (1 + gstRate / 100))
+      : (subtotal * gstRate) / 100;
+
+    return sum + gstAmount;
+  }, 0);
+
   let subtotal = isWithTax ? subTotal - labourCharges + discountAmount - gstTotal : subTotal - labourCharges + discountAmount
   let grandTotal = subTotal
-
+  subtotal = subtotal.toFixed(2)
+  gstTotal = gstTotal.toFixed(2)
   function calculateGST(price, quantity, gstRate) {
     let subtotal = (Number(price) * Number(quantity));
-    let gstAmount = (subtotal * Number(gstRate)) / 100;
+    let rate = ((subtotal) / (1 + (gstRate / 100)))
+    let gstAmount = subtotal - rate;
     let totalAmount = subtotal + gstAmount;
 
     return {
       subtotal: subtotal.toFixed(2),
+      rate: rate.toFixed(2),
       gstAmount: gstAmount.toFixed(2),
       totalAmount: totalAmount.toFixed(2),
     };
@@ -717,7 +777,7 @@ async function generateSalesInvoice({ saleInvoice, garage, isWithTax }) {
             </td>
           </tr>
           <tr class="border-1">
-            <td colspan="2" align="center" class="heading">${isWithTax ? `SALE TAX INVOICE` : `SALE INVOICE`}</td>
+            <td colspan="2" align="center" class="heading">${isWithTax ? `${InvoiceName} TAX INVOICE` : `${InvoiceName} INVOICE`}</td>
           </tr>
         </tbody>
       </table>
@@ -794,11 +854,11 @@ async function generateSalesInvoice({ saleInvoice, garage, isWithTax }) {
               <tr class="remove-line text-center">
                 <td>${index + 1}</td>
                 <td>${item.productName || 'Unnamed Product'}</td>
-                ${isWithTax && `<td>${item?.hsn || 12345678}</td>`}
+                ${isWithTax && `<td>${item?.hsn || ""}</td>`}
                 <td>${item.quantity}</td>
-                <td class="text-right">${item.price}</td>
-                ${isWithTax && `<td>${item?.gst || 18}%</td>`}
-                ${isWithTax && `<td>${calculateGST(item.price, item.quantity, item?.gst || 18).gstAmount}</td>`}
+                <td class="text-right">${isWithTax ? calculateGST(item.price, 1, item?.gst || 0).rate : item.price}</td>
+                ${isWithTax && `<td>${item?.gst || 0}%</td>`}
+                ${isWithTax && `<td>${calculateGST(item.price, item.quantity, item?.gst || 0).gstAmount}</td>`}
                 <td class="text-right">${(item.price * item.quantity)}</td>
               </tr>`).join('')}
           <tr>
@@ -1004,25 +1064,46 @@ async function generateSalesInvoice({ saleInvoice, garage, isWithTax }) {
 
 }
 
-async function generatePurchaseInvoice({ purchaseInvoice, garage, isWithTax }) {
+async function generatePurchaseInvoice({ purchaseInvoice, garage, isWithTax, invoiceType }) {
   const { setting } = await getAllSettings()
   const { invoice, type, to, from, productWithPrice, subTotal, remainingAmount, isPaid, date, discountAmount, labourCharges, billNo } = purchaseInvoice;
   const userAddress = await Address.findOne({ user: to?._id }).select("address")
+  let InvoiceName = 'PURCHASE'
+  switch (invoiceType) {
+    case "5":
+      InvoiceName = 'PURCHASE return';
+      break;
+    default:
+      break;
+  }
 
-  let gstTotal = productWithPrice.reduce(
-    (sum, item) => sum + ((item.price * item.quantity * (item?.gst || 18)) / 100),
-    0
-  )
+  let gstTotal = productWithPrice.reduce((sum, item) => {
+    let price = Number(item.price);
+    let quantity = Number(item.quantity);
+    let gstRate = Number(item.gst || 0);
+
+    let subtotal = price * quantity;
+
+    // If price is tax-inclusive, extract GST correctly
+    let gstAmount = isWithTax ? subtotal - (subtotal / (1 + gstRate / 100))
+      : (subtotal * gstRate) / 100;
+
+    return sum + gstAmount;
+  }, 0);
+
   let subtotal = isWithTax ? subTotal - labourCharges + discountAmount - gstTotal : subTotal - labourCharges + discountAmount
   let grandTotal = subTotal
-
+  subtotal = subtotal.toFixed(2)
+  gstTotal = gstTotal.toFixed(2)
   function calculateGST(price, quantity, gstRate) {
     let subtotal = (Number(price) * Number(quantity));
-    let gstAmount = (subtotal * Number(gstRate)) / 100;
+    let rate = ((subtotal) / (1 + (gstRate / 100)))
+    let gstAmount = subtotal - rate;
     let totalAmount = subtotal + gstAmount;
 
     return {
       subtotal: subtotal.toFixed(2),
+      rate: rate.toFixed(2),
       gstAmount: gstAmount.toFixed(2),
       totalAmount: totalAmount.toFixed(2),
     };
@@ -1076,7 +1157,7 @@ async function generatePurchaseInvoice({ purchaseInvoice, garage, isWithTax }) {
             </td>
           </tr>
           <tr class="border-1">
-            <td colspan="2" align="center" class="heading">${isWithTax ? `purchase TAX INVOICE` : `purchase INVOICE`}</td>
+            <td colspan="2" align="center" class="heading">${isWithTax ? `${InvoiceName} TAX INVOICE` : `${InvoiceName} INVOICE`}</td>
           </tr>
         </tbody>
       </table>
@@ -1161,11 +1242,11 @@ async function generatePurchaseInvoice({ purchaseInvoice, garage, isWithTax }) {
               <tr class="remove-line text-center">
                 <td>${index + 1}</td>
                 <td>${item.productName || 'Unnamed Product'}</td>
-                ${isWithTax && `<td>${item?.hsn || 12345678}</td>`}
+                ${isWithTax && `<td>${item?.hsn || ""}</td>`}
                 <td>${item.quantity}</td>
-                <td class="text-right">${item.price}</td>
-                ${isWithTax && `<td>${item?.gst || 18}%</td>`}
-                ${isWithTax && `<td>${calculateGST(item.price, item.quantity, item?.gst || 18).gstAmount}</td>`}
+                <td class="text-right">${isWithTax ? calculateGST(item.price, 1, item?.gst || 0).rate : item.price}</td>
+                ${isWithTax && `<td>${item?.gst || 0}%</td>`}
+                ${isWithTax && `<td>${calculateGST(item.price, item.quantity, item?.gst || 0).gstAmount}</td>`}
                 <td class="text-right">${(item.price * item.quantity)}</td>
               </tr>`).join('')}
 
@@ -1400,10 +1481,10 @@ const generateInvoiceHTML = async (req, res) => {
 
     if (invoice?.type === "1" || invoice?.type === "2" || invoice?.type === "3" || invoice?.type === "6") {
       saleInvoice = await SaleInvoice.findOne({ invoice: id }).populate('productWithPrice.productId to from invoice');
-      htmlContent = await generateSalesInvoice({ saleInvoice, garage, isWithTax })
+      htmlContent = await generateSalesInvoice({ saleInvoice, garage, isWithTax, invoiceType: invoice?.type })
     } else if (invoice?.type === "4" || invoice?.type === "5") {
       purchaseInvoice = await PurchaseInvoice.findOne({ invoice: id }).populate('productWithPrice.productId to from invoice');
-      htmlContent = await generatePurchaseInvoice({ purchaseInvoice, garage, isWithTax })
+      htmlContent = await generatePurchaseInvoice({ purchaseInvoice, garage, isWithTax, invoiceType: invoice?.type })
     } else if (invoice?.type === "0") {
       booking = await Booking.findOne({ invoice: id })
         .populate('user vendor myVehicle services pickupAddress dropAddress garage SubMechanic')

@@ -13,6 +13,7 @@ const subscriptionPlanSchema = new mongoose.Schema(
             monthly: { type: Number, default: 1 },           // Validity of monthly subscription in months
             yearly: { type: Number, default: 12 }            // Validity of yearly subscription in months
         },
+        gst: { type: Number, default: 0 },
         features: [{ type: String }], // List of features included in the plan
         isActive: { type: Boolean, default: true }, // To deactivate the plan if needed
     },

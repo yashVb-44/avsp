@@ -15,13 +15,15 @@ const subscriptionHistorySchema = new mongoose.Schema(
         planDetails: {
             type: Object
         },
-        purchaseDate: { type: Date, default: Date.now }, // Date when the subscription was purchased
-        startDate: { type: Date, required: true }, // Subscription start date
-        endDate: { type: Date, required: true }, // Subscription end date
+        purchaseDate: { type: String }, // Date when the subscription was purchased
+        startDate: { type: String, required: true }, // Subscription start date
+        endDate: { type: String, required: true }, // Subscription end date
         isActive: { type: Boolean, default: true }, // Whether the subscription is currently active
         autoRenew: { type: Boolean, default: false }, // Auto-renewal option
         renewalCount: { type: Number, default: 0 }, // Tracks the number of renewals
-        amountPaid: { type: Number, required: true }, // Amount paid for the subscription
+        totalPaidAmount: { type: Number, required: true }, // Amount paid for the subscription
+        gst: { type: Number, default: 0 },
+        amount: { type: Number, default: 0 },
         additional: {
             type: Number,
             default: 0

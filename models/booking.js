@@ -39,7 +39,9 @@ const bookingSchema = new Schema({
         price: {
             type: Number,
             default: 0
-        }
+        },
+        sac: String,
+        gst: Number,
     }],
     productWithPrice: [{
         productId: {
@@ -58,7 +60,9 @@ const bookingSchema = new Schema({
         price: {
             type: Number,
             default: 0
-        }
+        },
+        hsn: String,
+        gst: Number,
     }],
     scheduleDate: {
         type: String,

@@ -32,6 +32,8 @@ const saleInvoiceSchema = new mongoose.Schema({
             type: Number,
             default: 1
         },
+        hsn: String,
+        gst: Number,
         // labourCharges: {
         //     type: Number,
         //     default: 0

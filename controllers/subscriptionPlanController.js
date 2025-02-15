@@ -1,5 +1,66 @@
 const asyncHandler = require('express-async-handler');
 const SubscriptionPlan = require('../models/subscriptionPlan');
+const SubscriptionHistory = require("../models/subscriptionHistory")
+
+// Purchase a Subscription
+const purchaseSubscription = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.user;
+        const { subscriptionPlanId, paymentMethod, totalPaidAmount, gst, amount, additional, autoRenew } = req.body;
+
+        // Validate subscription plan
+        const subscriptionPlan = await SubscriptionPlan.findById(subscriptionPlanId);
+        if (!subscriptionPlan) {
+            return res.status(404).json({
+                message: 'Subscription plan not found',
+                type: 'error'
+            });
+        }
+
+        // Get current date in IST (Indian Standard Time)
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Remove time part
+
+        // Calculate end date based on additional field (0 = 12 months, 1 = 24 months, 2 = 36 months)
+        const durationInMonths = additional === 1 ? 24 : additional === 2 ? 36 : 12;
+        const endDate = new Date(now);
+        endDate.setMonth(endDate.getMonth() + durationInMonths);
+
+        // Format dates as DD-MM-YYYY
+        const formatDate = (date) => {
+            return date.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }); // Converts to DD-MM-YYYY
+        };
+
+        const newSubscription = new SubscriptionHistory({
+            ...req.body,
+            vendorId: id,
+            planDetails: subscriptionPlan,
+            purchaseDate: formatDate(now),
+            startDate: formatDate(now),
+            endDate: formatDate(endDate),
+            isActive: true,
+            autoRenew: autoRenew || false,
+            renewalCount: 0,
+            additional: additional || 0,
+            paymentMethod,
+            status: 'Active'
+        });
+
+        await newSubscription.save();
+
+        return res.status(201).json({
+            message: 'Subscription purchased successfully',
+            type: 'success',
+            subscription: newSubscription
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: 'Failed to purchase subscription',
+            error: error.message,
+            type: 'error'
+        });
+    }
+});
 
 // Add a new Subscription Plan
 const addSubscriptionPlan = asyncHandler(async (req, res) => {
@@ -136,5 +197,6 @@ module.exports = {
     addSubscriptionPlan,
     getSubscriptionPlan,
     updateSubscriptionPlan,
-    deleteSubscriptionPlan
+    deleteSubscriptionPlan,
+    purchaseSubscription
 };

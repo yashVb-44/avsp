@@ -32,6 +32,8 @@ const purchaseInvoiceSchema = new mongoose.Schema({
             type: Number,
             default: 1
         },
+        hsn: String,
+        gst: Number,
         // labourCharges: {
         //     type: Number,
         //     default: 0
@@ -65,7 +67,8 @@ const purchaseInvoiceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'PurchaseInvoice',
     },
-    date: String
+    date: String,
+    billNo: String
 }, {
     timestamps: true,
 });
