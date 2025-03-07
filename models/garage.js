@@ -1,99 +1,116 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const timingSchema = mongoose.Schema({
-    day: {
-        type: String,
-        enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-    },
-    startTime: {
-        type: String, // Format as "HH:mm"
-    },
-    endTime: {
-        type: String, // Format as "HH:mm"
-    },
-    isAvailable: {
-        type: Boolean,
-        default: true,
-    },
+  day: {
+    type: String,
+    enum: [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ],
+  },
+  startTime: {
+    type: String, // Format as "HH:mm"
+  },
+  endTime: {
+    type: String, // Format as "HH:mm"
+  },
+  isAvailable: {
+    type: Boolean,
+    default: true,
+  },
 });
 
-const garageSchema = mongoose.Schema({
+const garageSchema = mongoose.Schema(
+  {
     name: {
-        type: String,
+      type: String,
     },
     address: {
-        type: String,
+      type: String,
     },
     registerId: {
-        type: String,
-        default: "1000"
+      type: String,
+      default: "1000",
     },
     number: {
-        type: Number,
-        default: 1
+      type: Number,
+      default: 1,
     },
     garageAddress: {
-        type: String
+      type: String,
     },
     lat: {
-        type: Number,
+      type: Number,
     },
     lng: {
-        type: Number,
+      type: Number,
     },
     country: {
-        type: String,
+      type: String,
     },
     state: {
-        type: String,
+      type: String,
     },
     city: {
-        type: String,
+      type: String,
     },
     yearsOfGarage: {
-        type: Number
+      type: Number,
     },
     taluka: {
-        type: String,
+      type: String,
     },
     village: {
-        type: String,
+      type: String,
     },
     isGst: {
-        type: Boolean,
-        default: false,
+      type: Boolean,
+      default: false,
     },
     gstNo: {
-        type: String,
+      type: String,
     },
-    shopService: [{
+    shopService: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'ShopService',
-    }],
-    company: [{
+        ref: "ShopService",
+      },
+    ],
+    company: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Company',
-    }],
-    vehicalTypeHandle: [{
+        ref: "Company",
+      },
+    ],
+    vehicalTypeHandle: [
+      {
         type: String,
-    }],
+      },
+    ],
     isSensorService: {
-        type: Boolean,
-        default: false,
+      type: Boolean,
+      default: false,
     },
     privacyPolicy: {
-        type: String,
+      type: String,
     },
     weeklyTimings: [timingSchema],
     vendor: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Vendor',
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vendor",
     },
     bankName: String,
     ifsc: String,
-    accountNumber: String
-}, {
+    accountNumber: String,
+  },
+  {
     timestamps: true,
-});
+  }
+);
 
-module.exports = mongoose.model('Garage', garageSchema);
+module.exports = mongoose.model("Garage", garageSchema);
